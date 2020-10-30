@@ -22,6 +22,7 @@
 #include "include/logdebug.inc"
 #include <cstrike>
 #include <sourcemod>
+
 #include "get5/util.sp"
 #include "get5/version.sp"
 
@@ -77,7 +78,9 @@ public Plugin myinfo = {
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "get5_api");
   LogDebug("OnPluginStart version=%s", PLUGIN_VERSION);
-
+  g_UseSVGCvar = CreateConVar("get5_use_svg", "1", "support svg team logos");
+  HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
+  g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
   g_FTPHostCvar = 
       CreateConVar("get5_api_ftp_host", "ftp://example.com", "Remote FTP Host. Make sure you do NOT have the trailing slash. Include the path to the directory you wish to have.", FCVAR_PROTECTED);
 
