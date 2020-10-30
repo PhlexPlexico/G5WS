@@ -34,7 +34,8 @@
 #pragma newdecls required
 
 int g_MatchID = -1;
-
+ConVar g_UseSVGCvar;
+char g_LogoBasePath[128];
 ConVar g_APIKeyCvar;
 char g_APIKey[128];
 
@@ -60,14 +61,15 @@ ConVar g_FTPEnableCvar;
 bool g_FTPEnable;
 
 
-#define LOGO_DIR "resource/flash/econ/tournaments/teams"
-#define PANO_DIR "materials/panorama/images/tournaments/teams"
+#define LOGO_DIR "materials/panorama/images/tournaments/teams"
+#define LEGACY_LOGO_DIR "resource/flash/econ/tournaments/teams"
+
 // clang-format off
 public Plugin myinfo = {
   name = "Get5 Web API Integration",
   author = "splewis/phlexplexico",
   description = "Records match stats to a get5-web api",
-  version = "1.0",
+  version = "1.1",
   url = "https://github.com/phlexplexico/get5-web"
 };
 // clang-format on
@@ -117,17 +119,21 @@ public Action Command_Avaliable(int client, int args) {
   JSON_Object json = new JSON_Object();
 
   json.SetInt("gamestate", view_as<int>(Get5_GetGameState()));
-  json.SetInt("avaliable", 1); // legacy version since I'm bad at spelling
+  json.SetInt("avaliable", 1);  // legacy version since I'm bad at spelling
   json.SetInt("available", 1);
   json.SetString("plugin_version", versionString);
 
-  char buffer[128];
-  json.Encode(buffer, sizeof(buffer));
+  char buffer[256];
+  json.Encode(buffer, sizeof(buffer), true);
   ReplyToCommand(client, buffer);
 
   delete json;
 
   return Plugin_Handled;
+}
+
+public void LogoBasePathChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
+  g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
 }
 
 public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
@@ -216,14 +222,9 @@ public void Get5_OnSeriesInit() {
   g_MatchID = StringToInt(matchid);
 
   // Handle new logos.
-  if (!DirExists(LOGO_DIR)) {
-    if (!CreateDirectory(LOGO_DIR, 755)) {
-      LogError("Failed to create logo directory: %s", LOGO_DIR);
-    }
-  }
-  if (!DirExists(PANO_DIR)) {
-    if (!CreateDirectory(PANO_DIR, 755)) {
-      LogError("Failed to create logo directory: %s", PANO_DIR);
+  if (!DirExists(g_LogoBasePath)) {
+    if (!CreateDirectory(g_LogoBasePath, 755)) {
+      LogError("Failed to create logo directory: %s", g_LogoBasePath);
     }
   }
 
@@ -241,14 +242,20 @@ public void CheckForLogo(const char[] logo) {
   }
 
   char logoPath[PLATFORM_MAX_PATH + 1];
-  char svgLogoPath[PLATFORM_MAX_PATH +1];
-  Format(logoPath, sizeof(logoPath), "%s/%s.png", LOGO_DIR, logo);
-  Format(svgLogoPath, sizeof(svgLogoPath), "%s/%s.svg", PANO_DIR, logo);
+  // change png to svg because it's better supported
+  if (g_UseSVGCvar.BoolValue) {
+    Format(logoPath, sizeof(logoPath), "%s/%s.svg", g_LogoBasePath, logo);
+  } else {
+    Format(logoPath, sizeof(logoPath), "%s/%s.png", g_LogoBasePath, logo);
+  }
 
   // Try to fetch the file if we don't have it.
   if (!FileExists(logoPath)) {
     LogDebug("Fetching logo for %s", logo);
-    Handle req = CreateRequest(k_EHTTPMethodGET, "/static/resource/csgo/resource/flash/econ/tournaments/teams/%s.png", logo);
+    Handle req = g_UseSVGCvar.BoolValue
+                     ? CreateRequest(k_EHTTPMethodGET, "/static/img/logos/%s.svg", logo)
+                     : CreateRequest(k_EHTTPMethodGET, "/static/img/logos/%s.png", logo);
+
     if (req == INVALID_HANDLE) {
       return;
     }
@@ -258,22 +265,6 @@ public void CheckForLogo(const char[] logo) {
 
     SteamWorks_SetHTTPRequestContextValue(req, view_as<int>(pack));
     SteamWorks_SetHTTPCallbacks(req, LogoCallback);
-    SteamWorks_SendHTTPRequest(req);
-  }
-
-  //Attempt to get SVG.
-  if (!FileExists(svgLogoPath)) {
-    LogDebug("Fetching logo for %s", logo);
-    Handle req = CreateRequest(k_EHTTPMethodGET, "/static/resource/csgo/materials/panorama/images/tournaments/teams/%s.svg", logo);
-    if (req == INVALID_HANDLE) {
-      return;
-    }
-
-    Handle svgPack = CreateDataPack();
-    WritePackString(svgPack, logo);
-
-    SteamWorks_SetHTTPRequestContextValue(req, view_as<int>(svgPack));
-    SteamWorks_SetHTTPCallbacks(req, LogoCallbackSvg);
     SteamWorks_SendHTTPRequest(req);
   }
 }
@@ -290,28 +281,14 @@ public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStat
   pack.ReadString(logo, sizeof(logo));
 
   char logoPath[PLATFORM_MAX_PATH + 1];
-  Format(logoPath, sizeof(logoPath), "%s/%s.png", LOGO_DIR, logo);
+  if (g_UseSVGCvar.BoolValue) {
+    Format(logoPath, sizeof(logoPath), "%s/%s.svg", g_LogoBasePath, logo);
+  } else {
+    Format(logoPath, sizeof(logoPath), "%s/%s.png", g_LogoBasePath, logo);
+  }
 
   LogMessage("Saved logo for %s to %s", logo, logoPath);
   SteamWorks_WriteHTTPResponseBodyToFile(request, logoPath);
-}
-
-public int LogoCallbackSvg(Handle request, bool failure, bool successful, EHTTPStatusCode status, int data) {
-  if (failure || !successful) {
-    LogError("Logo request failed, status code = %d", status);
-    return;
-  }
-
-  DataPack pack = view_as<DataPack>(data);
-  pack.Reset();
-  char logo[32];
-  pack.ReadString(logo, sizeof(logo));
-
-  char svgLogoPath[PLATFORM_MAX_PATH + 1];
-  Format(svgLogoPath, sizeof(svgLogoPath), "%s/%s.svg", PANO_DIR, logo);
-
-  LogMessage("Saved logo for %s to %s", logo, svgLogoPath);
-  SteamWorks_WriteHTTPResponseBodyToFile(request, svgLogoPath);
 }
 
 public void Get5_OnGoingLive(int mapNumber) {
@@ -331,7 +308,6 @@ public void Get5_OnGoingLive(int mapNumber) {
   }
   Get5_AddLiveCvar("get5_web_api_key", g_APIKey);
   Get5_AddLiveCvar("get5_web_api_url", g_APIURL);
-  
 }
 
 public void UpdateRoundStats(int mapNumber) {
@@ -345,7 +321,6 @@ public void UpdateRoundStats(int mapNumber) {
     SteamWorks_SendHTTPRequest(req);
   }
 
-  // Update player stats
   KeyValues kv = new KeyValues("Stats");
   Get5_GetMatchStats(kv);
   char mapKey[32];
@@ -427,6 +402,8 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
         AddIntStat(req, kv, STAT_FIRSTDEATH_T);
         AddIntStat(req, kv, STAT_FIRSTDEATH_CT);
         AddIntStat(req, kv, STAT_TRADEKILL);
+        AddIntStat(req, kv, STAT_KAST);
+        AddIntStat(req, kv, STAT_CONTRIBUTION_SCORE);
         SteamWorks_SendHTTPRequest(req);
       }
 
@@ -470,6 +447,7 @@ public void Get5_OnDemoFinished(const char[] filename){
     int mapNumber = MapNumber();
     char zippedFile[PLATFORM_MAX_PATH];
     char formattedURL[PLATFORM_MAX_PATH];
+    //TODO: Maybe create a post request and end-point to API to upload? Remove FTP.
     UploadDemo(filename, zippedFile);
 
     Handle req = CreateDemoRequest(k_EHTTPMethodPOST, "match/%d/map/%d/demo", g_MatchID, mapNumber-1);
