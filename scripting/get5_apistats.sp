@@ -27,7 +27,6 @@
 #include "get5/version.sp"
 
 #include <SteamWorks>
-#include <system2> // github.com/dordnung/System2/
 #include <json> // github.com/clugg/sm-json
 #include "get5/jsonhelpers.sp"
 
@@ -46,21 +45,7 @@ char g_APIURL[128];
 char g_storedAPIURL[128];
 char g_storedAPIKey[128];
 
-ConVar g_FTPHostCvar;
-char g_FTPHost[128];
-
-ConVar g_FTPUsernameCvar;
-char g_FTPUsername[128];
-
-ConVar g_FTPPasswordCvar;
-char g_FTPPassword[128];
-
-ConVar g_FTPPortCvar;
-int g_FTPPort;
-
-ConVar g_FTPEnableCvar;
-bool g_FTPEnable;
-
+ConVar g_EnableDemoUpload;
 
 #define LOGO_DIR "materials/panorama/images/tournaments/teams"
 #define LEGACY_LOGO_DIR "resource/flash/econ/tournaments/teams"
@@ -78,29 +63,17 @@ public Plugin myinfo = {
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "get5_api");
   LogDebug("OnPluginStart version=%s", PLUGIN_VERSION);
-  g_UseSVGCvar = CreateConVar("get5_use_svg", "1", "support svg team logos");
+  g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
-  g_FTPHostCvar = 
-      CreateConVar("get5_api_ftp_host", "ftp://example.com", "Remote FTP Host. Make sure you do NOT have the trailing slash. Include the path to the directory you wish to have.", FCVAR_PROTECTED);
 
-  g_FTPPortCvar = 
-      CreateConVar("get5_api_ftp_port", "21", "Remote FTP Port", FCVAR_PROTECTED);
-
-  g_FTPUsernameCvar =
-      CreateConVar("get5_api_ftp_username", "username", "Username for the FTP connection.", FCVAR_PROTECTED);
-
-  g_FTPPasswordCvar = 
-      CreateConVar("get5_api_ftp_password", "supersecret", "Password for the FTP user. Leave blank if no password.", FCVAR_PROTECTED);
-
-  g_FTPEnableCvar = 
-      CreateConVar("get5_api_ftp_enabled", "0", "0 Disables FTP Upload, 1 Enables.");
+  g_EnableDemoUpload = CreateConVar("get5_upload_demos", "0", "Upload demo on post match.");
 
   g_APIKeyCvar =
       CreateConVar("get5_web_api_key", "", "Match API key, this is automatically set through rcon", FCVAR_DONTRECORD);
   HookConVarChange(g_APIKeyCvar, ApiInfoChanged);
 
-  g_APIURLCvar = CreateConVar("get5_web_api_url", "", "URL the get5 api is hosted at, IGNORE AS IT IS SYSTEM SET.", FCVAR_DONTRECORD);
+  g_APIURLCvar = CreateConVar("get5_web_api_url", "", "URL the get5 api is hosted at.", FCVAR_DONTRECORD);
 
   HookConVarChange(g_APIURLCvar, ApiInfoChanged);
 
@@ -108,7 +81,6 @@ public void OnPluginStart() {
                 Command_Avaliable);  // legacy version since I'm bad at spelling
   RegConsoleCmd("get5_web_available", Command_Avaliable);
   /** Create and exec plugin's configuration file **/
-  AutoExecConfig(true, "get5api");
   
 }
 
@@ -296,7 +268,6 @@ public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStat
 
 public void Get5_OnGoingLive(int mapNumber) {
   char mapName[64];
-  g_FTPEnable = g_FTPEnableCvar.BoolValue;
   
   GetCurrentMap(mapName, sizeof(mapName));
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/map/%d/start", g_MatchID, mapNumber);
@@ -305,7 +276,7 @@ public void Get5_OnGoingLive(int mapNumber) {
     SteamWorks_SendHTTPRequest(req);
   }
   // Store Cvar since it gets reset after match finishes?
-  if (g_FTPEnable) {
+  if (g_EnableDemoUpload.BoolValue) {
     Format(g_storedAPIKey, sizeof(g_storedAPIKey), g_APIKey);
     Format(g_storedAPIURL, sizeof(g_storedAPIURL), g_APIURL);
   }
@@ -444,13 +415,12 @@ public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
 }
 
 public void Get5_OnDemoFinished(const char[] filename){
-  g_FTPEnable = g_FTPEnableCvar.BoolValue;
-  if (g_FTPEnable) {
+  if (g_EnableDemoUpload.BoolValue) {
     LogDebug("About to enter UploadDemo.");
     int mapNumber = MapNumber();
     char zippedFile[PLATFORM_MAX_PATH];
     char formattedURL[PLATFORM_MAX_PATH];
-    //TODO: Maybe create a post request and end-point to API to upload? Remove FTP.
+    //TODO: Read file into an object, get it down to base64 and add to JSON array as string?
     UploadDemo(filename, zippedFile);
 
     Handle req = CreateDemoRequest(k_EHTTPMethodPOST, "match/%d/map/%d/demo", g_MatchID, mapNumber-1);
@@ -473,50 +443,10 @@ public void Get5_OnDemoFinished(const char[] filename){
 public void UploadDemo(const char[] filename, char zippedFile[PLATFORM_MAX_PATH]){
   char remoteDemoPath[PLATFORM_MAX_PATH];
   if(filename[0]){
-    g_FTPHostCvar.GetString(g_FTPHost, sizeof(g_FTPHost));
-    g_FTPPort = g_FTPPortCvar.IntValue;
-    g_FTPUsernameCvar.GetString(g_FTPUsername, sizeof(g_FTPUsername));
-    g_FTPPasswordCvar.GetString(g_FTPPassword, sizeof(g_FTPPassword));
-    
-    Format(zippedFile, sizeof(zippedFile), "%s", filename);
-    Format(remoteDemoPath, sizeof(remoteDemoPath), "%s/%s", g_FTPHost, zippedFile);
-    LogDebug("Our File is: %s and remote demo path of %s", zippedFile, remoteDemoPath);
-    System2FTPRequest ftpRequest = new System2FTPRequest(FtpResponseCallback, remoteDemoPath);
-    ftpRequest.AppendToFile = false;
-    ftpRequest.CreateMissingDirs = true;
-    ftpRequest.SetAuthentication(g_FTPUsername, g_FTPPassword);
-    ftpRequest.SetPort(g_FTPPort);
-    ftpRequest.SetProgressCallback(FtpProgressCallback);
-    LogDebug("Our File is: %s", zippedFile);
-
-    ftpRequest.SetInputFile(zippedFile);
-    ftpRequest.StartRequest(); 
+    LogDebug("Begin uploading demoes. Read from file to data.");
   } else{
     LogDebug("FTP Uploads Disabled OR Filename was empty (no demo to upload). Change config to enable.");
   }
-}
-
-
-public void FtpProgressCallback(System2FTPRequest request, int dlTotal, int dlNow, int ulTotal, int ulNow) {
-  char file[PLATFORM_MAX_PATH];
-  request.GetInputFile(file, sizeof(file));
-  if (strlen(file) > 0) {
-      LogDebug("Uploading %s file with %d bytes total, %d now", file, ulTotal, ulNow);
-  }
-}  
-
-public void FtpResponseCallback(bool success, const char[] error, System2FTPRequest request, System2FTPResponse response) {
-    if (success || StrContains(error, "Uploaded unaligned file size") > -1) {
-        char file[PLATFORM_MAX_PATH];
-        request.GetInputFile(file, sizeof(file));
-        if (strlen(file) > 0) {
-            if (DeleteFileIfExists(file)) {
-                LogDebug("Deleted file after complete.");
-            }
-        }
-    } else{
-      LogError("There was a problem: %s", error);
-    }
 }
 
 public void Get5_OnMapPicked(MatchTeam team, const char[] map){
