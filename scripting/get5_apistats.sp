@@ -24,7 +24,6 @@
 #include <sourcemod>
 
 #include "get5/util.sp"
-#include "get5/version.sp"
 
 #include <ripext>
 
@@ -50,10 +49,10 @@ ConVar g_EnableDemoUpload;
 
 // clang-format off
 public Plugin myinfo = {
-  name = "Get5 Web API Integration",
+  name = "Get5 API Integration - RIPEXT",
   author = "splewis/phlexplexico",
-  description = "Records match stats to a get5-web api",
-  version = "1.1",
+  description = "Records match stats to G5API.",
+  version = "1.11",
   url = "https://github.com/phlexplexico/get5-web"
 };
 // clang-format on
@@ -92,7 +91,6 @@ public Action Command_Avaliable(int client, int args) {
   JSONObject json = new JSONObject();
 
   json.SetInt("gamestate", view_as<int>(Get5_GetGameState()));
-  json.SetInt("avaliable", 1);  // legacy version since I'm bad at spelling
   json.SetInt("available", 1);
   json.SetString("plugin_version", versionString);
 
@@ -145,10 +143,8 @@ static HTTPClient CreateRequest(const char[] apiMethod, any:...) {
 
 static HTTPClient CreateDemoRequest(const char[] apiMethod, any:...) {
   char url[1024];
-  Format(url, sizeof(url), "%s%s", g_storedAPIURL, apiMethod);
-
   char formattedUrl[1024];
-  VFormat(formattedUrl, sizeof(formattedUrl), url, 3);
+  VFormat(formattedUrl, sizeof(formattedUrl), url, 2);
 
   LogDebug("Trying to create request to url %s", formattedUrl);
 
