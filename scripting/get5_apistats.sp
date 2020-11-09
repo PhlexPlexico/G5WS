@@ -59,7 +59,7 @@ public Plugin myinfo = {
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "get5_api");
-  LogDebug("OnPluginStart version=%s", PLUGIN_VERSION);
+  LogDebug("OnPluginStart version=1.11");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -143,6 +143,8 @@ static HTTPClient CreateRequest(const char[] apiMethod, any:...) {
 
 static HTTPClient CreateDemoRequest(const char[] apiMethod, any:...) {
   char url[1024];
+  Format(url, sizeof(url), "%s%s", g_storedAPIURL, apiMethod);
+  LogDebug("Our URL is: %s", url);
   char formattedUrl[1024];
   VFormat(formattedUrl, sizeof(formattedUrl), url, 2);
 
@@ -152,7 +154,6 @@ static HTTPClient CreateDemoRequest(const char[] apiMethod, any:...) {
   if (StrEqual(g_storedAPIKey, "")) {
     // Not using a web interface.
     return null;
-
   } else if (req == INVALID_HANDLE) {
     LogError("Failed to create request to %s", formattedUrl);
     return null;
