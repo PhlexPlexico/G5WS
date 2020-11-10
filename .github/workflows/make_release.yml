@@ -7,8 +7,6 @@ name: Create Release Executable
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -78,10 +76,8 @@ jobs:
           tag_name: ${{ github.ref }}
           # The name of the release. For example, `Release v1.0.1`
           release_name: Release ${{ github.ref }}
-          # Text describing the contents of the tag.
           # `true` to create a draft (unpublished) release, `false` to create a published one. Default: `false`
           draft: true
-          # `true` to identify the release as a prerelease. `false` to identify the release as a full release. Default: `false`
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1.0.2
