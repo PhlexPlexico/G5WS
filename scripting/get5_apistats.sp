@@ -22,19 +22,17 @@
 #include "include/logdebug.inc"
 #include <cstrike>
 #include <sourcemod>
-#include "get5/util.sp"
-#include "get5/version.sp"
 
-#include <SteamWorks>
-#include <system2> // github.com/dordnung/System2/
-#include <json> // github.com/clugg/sm-json
-#include "get5/jsonhelpers.sp"
+#include "get5/util.sp"
+
+#include <ripext>
 
 #pragma semicolon 1
 #pragma newdecls required
 
 int g_MatchID = -1;
-
+ConVar g_UseSVGCvar;
+char g_LogoBasePath[128];
 ConVar g_APIKeyCvar;
 char g_APIKey[128];
 
@@ -44,58 +42,35 @@ char g_APIURL[128];
 char g_storedAPIURL[128];
 char g_storedAPIKey[128];
 
-ConVar g_FTPHostCvar;
-char g_FTPHost[128];
+ConVar g_EnableDemoUpload;
 
-ConVar g_FTPUsernameCvar;
-char g_FTPUsername[128];
+#define LOGO_DIR "materials/panorama/images/tournaments/teams"
+#define LEGACY_LOGO_DIR "resource/flash/econ/tournaments/teams"
 
-ConVar g_FTPPasswordCvar;
-char g_FTPPassword[128];
-
-ConVar g_FTPPortCvar;
-int g_FTPPort;
-
-ConVar g_FTPEnableCvar;
-bool g_FTPEnable;
-
-
-#define LOGO_DIR "resource/flash/econ/tournaments/teams"
-#define PANO_DIR "materials/panorama/images/tournaments/teams"
 // clang-format off
 public Plugin myinfo = {
-  name = "Get5 Web API Integration",
+  name = "Get5 API Integration - RIPEXT",
   author = "splewis/phlexplexico",
-  description = "Records match stats to a get5-web api",
-  version = "1.0",
+  description = "Records match stats to G5API.",
+  version = "1.11",
   url = "https://github.com/phlexplexico/get5-web"
 };
 // clang-format on
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "get5_api");
-  LogDebug("OnPluginStart version=%s", PLUGIN_VERSION);
+  LogDebug("OnPluginStart version=1.11");
+  g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
+  HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
+  g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
 
-  g_FTPHostCvar = 
-      CreateConVar("get5_api_ftp_host", "ftp://example.com", "Remote FTP Host. Make sure you do NOT have the trailing slash. Include the path to the directory you wish to have.", FCVAR_PROTECTED);
-
-  g_FTPPortCvar = 
-      CreateConVar("get5_api_ftp_port", "21", "Remote FTP Port", FCVAR_PROTECTED);
-
-  g_FTPUsernameCvar =
-      CreateConVar("get5_api_ftp_username", "username", "Username for the FTP connection.", FCVAR_PROTECTED);
-
-  g_FTPPasswordCvar = 
-      CreateConVar("get5_api_ftp_password", "supersecret", "Password for the FTP user. Leave blank if no password.", FCVAR_PROTECTED);
-
-  g_FTPEnableCvar = 
-      CreateConVar("get5_api_ftp_enabled", "0", "0 Disables FTP Upload, 1 Enables.");
+  g_EnableDemoUpload = CreateConVar("get5_upload_demos", "0", "Upload demo on post match.");
 
   g_APIKeyCvar =
       CreateConVar("get5_web_api_key", "", "Match API key, this is automatically set through rcon", FCVAR_DONTRECORD);
   HookConVarChange(g_APIKeyCvar, ApiInfoChanged);
 
-  g_APIURLCvar = CreateConVar("get5_web_api_url", "", "URL the get5 api is hosted at, IGNORE AS IT IS SYSTEM SET.", FCVAR_DONTRECORD);
+  g_APIURLCvar = CreateConVar("get5_web_api_url", "", "URL the get5 api is hosted at.", FCVAR_DONTRECORD);
 
   HookConVarChange(g_APIURLCvar, ApiInfoChanged);
 
@@ -103,7 +78,6 @@ public void OnPluginStart() {
                 Command_Avaliable);  // legacy version since I'm bad at spelling
   RegConsoleCmd("get5_web_available", Command_Avaliable);
   /** Create and exec plugin's configuration file **/
-  AutoExecConfig(true, "get5api");
   
 }
 
@@ -114,20 +88,23 @@ public Action Command_Avaliable(int client, int args) {
     versionCvar.GetString(versionString, sizeof(versionString));
   }
 
-  JSON_Object json = new JSON_Object();
+  JSONObject json = new JSONObject();
 
   json.SetInt("gamestate", view_as<int>(Get5_GetGameState()));
-  json.SetInt("avaliable", 1); // legacy version since I'm bad at spelling
   json.SetInt("available", 1);
   json.SetString("plugin_version", versionString);
 
-  char buffer[128];
-  json.Encode(buffer, sizeof(buffer));
+  char buffer[256];
+  json.ToString(buffer, sizeof(buffer), true);
   ReplyToCommand(client, buffer);
 
   delete json;
 
   return Plugin_Handled;
+}
+
+public void LogoBasePathChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
+  g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
 }
 
 public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
@@ -143,65 +120,56 @@ public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] ne
   LogDebug("get5_web_api_url now set to %s", g_APIURL);
 }
 
-static Handle CreateRequest(EHTTPMethod httpMethod, const char[] apiMethod, any:...) {
+static HTTPClient CreateRequest(const char[] apiMethod, any:...) {
   char url[1024];
   Format(url, sizeof(url), "%s%s", g_APIURL, apiMethod);
-
+  LogDebug("Our URL is: %s", url);
   char formattedUrl[1024];
-  VFormat(formattedUrl, sizeof(formattedUrl), url, 3);
+  VFormat(formattedUrl, sizeof(formattedUrl), url, 2);
 
   LogDebug("Trying to create request to url %s", formattedUrl);
 
-  Handle req = SteamWorks_CreateHTTPRequest(httpMethod, formattedUrl);
+  HTTPClient req = new HTTPClient(formattedUrl);
   if (StrEqual(g_APIKey, "")) {
     // Not using a web interface.
-    return INVALID_HANDLE;
-
+    return null;
   } else if (req == INVALID_HANDLE) {
     LogError("Failed to create request to %s", formattedUrl);
-    return INVALID_HANDLE;
-
+    return null;
   } else {
-    SteamWorks_SetHTTPCallbacks(req, RequestCallback);
-    AddStringParam(req, "key", g_APIKey);
     return req;
   }
 }
 
-static Handle CreateDemoRequest(EHTTPMethod httpMethod, const char[] apiMethod, any:...) {
+static HTTPClient CreateDemoRequest(const char[] apiMethod, any:...) {
   char url[1024];
   Format(url, sizeof(url), "%s%s", g_storedAPIURL, apiMethod);
-
+  LogDebug("Our URL is: %s", url);
   char formattedUrl[1024];
-  VFormat(formattedUrl, sizeof(formattedUrl), url, 3);
+  VFormat(formattedUrl, sizeof(formattedUrl), url, 2);
 
   LogDebug("Trying to create request to url %s", formattedUrl);
 
-  Handle req = SteamWorks_CreateHTTPRequest(httpMethod, formattedUrl);
+  HTTPClient req = new HTTPClient(formattedUrl);
   if (StrEqual(g_storedAPIKey, "")) {
     // Not using a web interface.
-    return INVALID_HANDLE;
-
+    return null;
   } else if (req == INVALID_HANDLE) {
     LogError("Failed to create request to %s", formattedUrl);
-    return INVALID_HANDLE;
-
+    return null;
   } else {
-    SteamWorks_SetHTTPCallbacks(req, RequestCallback);
-    AddStringParam(req, "key", g_APIKey);
     return req;
   }
 }
 
-public int RequestCallback(Handle request, bool failure, bool requestSuccessful,
-                    EHTTPStatusCode statusCode) {
-  if (failure || !requestSuccessful) {
-    LogError("API request failed, HTTP status code = %d", statusCode);
-    char response[1024];
-    SteamWorks_GetHTTPResponseBodyData(request, response, sizeof(response));
-    LogError(response);
-    return;
-  }
+public void RequestCallback(HTTPResponse response, any value) {
+    if (response.Status == HTTPStatus_InternalServerError) {
+        LogError("[ERR] API request failed, HTTP status code: %d", response.Status);
+        char sData[1024];
+        response.Data.ToString(sData, sizeof(sData), JSON_INDENT(4));
+        LogError("[ERR] Response:\n%s", sData);
+        return;
+    } 
 }
 
 public void Get5_OnBackupRestore() {
@@ -216,14 +184,9 @@ public void Get5_OnSeriesInit() {
   g_MatchID = StringToInt(matchid);
 
   // Handle new logos.
-  if (!DirExists(LOGO_DIR)) {
-    if (!CreateDirectory(LOGO_DIR, 755)) {
-      LogError("Failed to create logo directory: %s", LOGO_DIR);
-    }
-  }
-  if (!DirExists(PANO_DIR)) {
-    if (!CreateDirectory(PANO_DIR, 755)) {
-      LogError("Failed to create logo directory: %s", PANO_DIR);
+  if (!DirExists(g_LogoBasePath)) {
+    if (!CreateDirectory(g_LogoBasePath, 755)) {
+      LogError("Failed to create logo directory: %s", g_LogoBasePath);
     }
   }
 
@@ -240,112 +203,71 @@ public void CheckForLogo(const char[] logo) {
     return;
   }
 
-  char logoPath[PLATFORM_MAX_PATH + 1];
-  char svgLogoPath[PLATFORM_MAX_PATH +1];
-  Format(logoPath, sizeof(logoPath), "%s/%s.png", LOGO_DIR, logo);
-  Format(svgLogoPath, sizeof(svgLogoPath), "%s/%s.svg", PANO_DIR, logo);
+  char logoPath[PLATFORM_MAX_PATH];
+  // change png to svg because it's better supported
+  if (g_UseSVGCvar.BoolValue) {
+    Format(logoPath, sizeof(logoPath), "%s/%s.svg", g_LogoBasePath, logo);
+  } else {
+    Format(logoPath, sizeof(logoPath), "%s/%s.png", g_LogoBasePath, logo);
+  }
 
   // Try to fetch the file if we don't have it.
   if (!FileExists(logoPath)) {
     LogDebug("Fetching logo for %s", logo);
-    Handle req = CreateRequest(k_EHTTPMethodGET, "/static/resource/csgo/resource/flash/econ/tournaments/teams/%s.png", logo);
-    if (req == INVALID_HANDLE) {
+    HTTPClient req = g_UseSVGCvar.BoolValue
+                     ? CreateRequest("/static/img/logos/%s.svg", logo)
+                     : CreateRequest("/static/img/logos/%s.png", logo);
+
+    if (req == null) {
       return;
     }
-
-    Handle pack = CreateDataPack();
-    WritePackString(pack, logo);
-
-    SteamWorks_SetHTTPRequestContextValue(req, view_as<int>(pack));
-    SteamWorks_SetHTTPCallbacks(req, LogoCallback);
-    SteamWorks_SendHTTPRequest(req);
-  }
-
-  //Attempt to get SVG.
-  if (!FileExists(svgLogoPath)) {
-    LogDebug("Fetching logo for %s", logo);
-    Handle req = CreateRequest(k_EHTTPMethodGET, "/static/resource/csgo/materials/panorama/images/tournaments/teams/%s.svg", logo);
-    if (req == INVALID_HANDLE) {
-      return;
-    }
-
-    Handle svgPack = CreateDataPack();
-    WritePackString(svgPack, logo);
-
-    SteamWorks_SetHTTPRequestContextValue(req, view_as<int>(svgPack));
-    SteamWorks_SetHTTPCallbacks(req, LogoCallbackSvg);
-    SteamWorks_SendHTTPRequest(req);
+    req.DownloadFile("", logoPath, LogoCallback);
+    LogMessage("Saved logo for %s at %s", logo, logoPath);
   }
 }
 
-public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStatusCode status, int data) {
-  if (failure || !successful) {
+public void LogoCallback(HTTPStatus status, any value) {
+  if (status != HTTPStatus_OK) {
     LogError("Logo request failed, status code = %d", status);
     return;
   }
-
-  DataPack pack = view_as<DataPack>(data);
-  pack.Reset();
-  char logo[32];
-  pack.ReadString(logo, sizeof(logo));
-
-  char logoPath[PLATFORM_MAX_PATH + 1];
-  Format(logoPath, sizeof(logoPath), "%s/%s.png", LOGO_DIR, logo);
-
-  LogMessage("Saved logo for %s to %s", logo, logoPath);
-  SteamWorks_WriteHTTPResponseBodyToFile(request, logoPath);
-}
-
-public int LogoCallbackSvg(Handle request, bool failure, bool successful, EHTTPStatusCode status, int data) {
-  if (failure || !successful) {
-    LogError("Logo request failed, status code = %d", status);
-    return;
-  }
-
-  DataPack pack = view_as<DataPack>(data);
-  pack.Reset();
-  char logo[32];
-  pack.ReadString(logo, sizeof(logo));
-
-  char svgLogoPath[PLATFORM_MAX_PATH + 1];
-  Format(svgLogoPath, sizeof(svgLogoPath), "%s/%s.svg", PANO_DIR, logo);
-
-  LogMessage("Saved logo for %s to %s", logo, svgLogoPath);
-  SteamWorks_WriteHTTPResponseBodyToFile(request, svgLogoPath);
+  return;
 }
 
 public void Get5_OnGoingLive(int mapNumber) {
   char mapName[64];
-  g_FTPEnable = g_FTPEnableCvar.BoolValue;
   
   GetCurrentMap(mapName, sizeof(mapName));
-  Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/map/%d/start", g_MatchID, mapNumber);
-  if (req != INVALID_HANDLE) {
-    AddStringParam(req, "mapname", mapName);
-    SteamWorks_SendHTTPRequest(req);
+  HTTPClient req = CreateRequest("match/%d/map/%d/start", g_MatchID, mapNumber);
+  JSONObject mtchDetail = new JSONObject();
+  if (req != null) {
+    mtchDetail.SetString("key", g_APIKey);
+    mtchDetail.SetString("mapname", mapName);
+    req.Post("", mtchDetail, RequestCallback);
   }
   // Store Cvar since it gets reset after match finishes?
-  if (g_FTPEnable) {
+  if (g_EnableDemoUpload.BoolValue) {
     Format(g_storedAPIKey, sizeof(g_storedAPIKey), g_APIKey);
     Format(g_storedAPIURL, sizeof(g_storedAPIURL), g_APIURL);
   }
   Get5_AddLiveCvar("get5_web_api_key", g_APIKey);
   Get5_AddLiveCvar("get5_web_api_url", g_APIURL);
-  
+  delete mtchDetail;
 }
 
 public void UpdateRoundStats(int mapNumber) {
-  int t1score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team1));
-  int t2score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team2));
+  int team1Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team1));
+  int team2Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team2));
 
-  Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/map/%d/update", g_MatchID, mapNumber);
-  if (req != INVALID_HANDLE) {
-    AddIntParam(req, "team1score", t1score);
-    AddIntParam(req, "team2score", t2score);
-    SteamWorks_SendHTTPRequest(req);
+  HTTPClient req = CreateRequest("match/%d/map/%d/update", g_MatchID, mapNumber);
+  JSONObject rndStat = new JSONObject();
+  if (req != null) {
+    rndStat.SetString("key", g_APIKey);
+    rndStat.SetInt("team1score", team1Score);
+    rndStat.SetInt("team2score", team2Score);
+    req.Post("", rndStat, RequestCallback);
   }
 
-  // Update player stats
   KeyValues kv = new KeyValues("Stats");
   Get5_GetMatchStats(kv);
   char mapKey[32];
@@ -362,6 +284,7 @@ public void UpdateRoundStats(int mapNumber) {
     kv.GoBack();
   }
   delete kv;
+  delete rndStat;
 }
 
 public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Score, int team2Score,
@@ -369,19 +292,16 @@ public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Sco
   char winnerString[64];
   GetTeamString(mapWinner, winnerString, sizeof(winnerString));
 
-  Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/map/%d/finish", g_MatchID, mapNumber);
-  if (req != INVALID_HANDLE) {
-    AddIntParam(req, "team1score", team1Score);
-    AddIntParam(req, "team2score", team2Score);
-    AddStringParam(req, "winner", winnerString);
-    SteamWorks_SendHTTPRequest(req);
+  HTTPClient req = CreateRequest("match/%d/map/%d/finish", g_MatchID, mapNumber);
+  JSONObject mtchRes = new JSONObject();
+  if (req != null && mapNumber > -1) {
+    mtchRes.SetString("key", g_APIKey);
+    mtchRes.SetInt("team1score", team1Score);
+    mtchRes.SetInt("team2score", team2Score);
+    mtchRes.SetString("winner", winnerString);
+    req.Post("", mtchRes, RequestCallback);
   }
-}
-
-
-
-static void AddIntStat(Handle req, KeyValues kv, const char[] field) {
-  AddIntParam(req, field, kv.GetNum(field));
+  delete mtchRes;
 }
 
 public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
@@ -390,166 +310,128 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
   int mapNumber = MapNumber();
 
   if (kv.GotoFirstSubKey()) {
+    JSONObject pStat = new JSONObject();
+    pStat.SetString("key", g_APIKey);
     do {
       kv.GetSectionName(auth, sizeof(auth));
       kv.GetString("name", name, sizeof(name));
       char teamString[16];
       GetTeamString(team, teamString, sizeof(teamString));
 
-      Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/map/%d/player/%s/update", g_MatchID,
+      HTTPClient req = CreateRequest("match/%d/map/%d/player/%s/update", g_MatchID,
                                  mapNumber, auth);
-      if (req != INVALID_HANDLE) {
-        AddStringParam(req, "team", teamString);
-        AddStringParam(req, "name", name);
-        AddIntStat(req, kv, STAT_KILLS);
-        AddIntStat(req, kv, STAT_DEATHS);
-        AddIntStat(req, kv, STAT_ASSISTS);
-        AddIntStat(req, kv, STAT_FLASHBANG_ASSISTS);
-        AddIntStat(req, kv, STAT_TEAMKILLS);
-        AddIntStat(req, kv, STAT_SUICIDES);
-        AddIntStat(req, kv, STAT_DAMAGE);
-        AddIntStat(req, kv, STAT_HEADSHOT_KILLS);
-        AddIntStat(req, kv, STAT_ROUNDSPLAYED);
-        AddIntStat(req, kv, STAT_BOMBPLANTS);
-        AddIntStat(req, kv, STAT_BOMBDEFUSES);
-        AddIntStat(req, kv, STAT_1K);
-        AddIntStat(req, kv, STAT_2K);
-        AddIntStat(req, kv, STAT_3K);
-        AddIntStat(req, kv, STAT_4K);
-        AddIntStat(req, kv, STAT_5K);
-        AddIntStat(req, kv, STAT_V1);
-        AddIntStat(req, kv, STAT_V2);
-        AddIntStat(req, kv, STAT_V3);
-        AddIntStat(req, kv, STAT_V4);
-        AddIntStat(req, kv, STAT_V5);
-        AddIntStat(req, kv, STAT_FIRSTKILL_T);
-        AddIntStat(req, kv, STAT_FIRSTKILL_CT);
-        AddIntStat(req, kv, STAT_FIRSTDEATH_T);
-        AddIntStat(req, kv, STAT_FIRSTDEATH_CT);
-        AddIntStat(req, kv, STAT_TRADEKILL);
-        SteamWorks_SendHTTPRequest(req);
+      if (req != null) {
+        pStat.SetString("team", teamString);
+        pStat.SetString("name", name);
+        pStat.SetInt(STAT_KILLS, kv.GetNum(STAT_KILLS));
+        pStat.SetInt(STAT_DEATHS, kv.GetNum(STAT_DEATHS));
+        pStat.SetInt(STAT_ASSISTS, kv.GetNum(STAT_ASSISTS));
+        pStat.SetInt(STAT_FLASHBANG_ASSISTS, kv.GetNum(STAT_FLASHBANG_ASSISTS));
+        pStat.SetInt(STAT_TEAMKILLS, kv.GetNum(STAT_TEAMKILLS));
+        pStat.SetInt(STAT_SUICIDES, kv.GetNum(STAT_SUICIDES));
+        pStat.SetInt(STAT_DAMAGE, kv.GetNum(STAT_DAMAGE));
+        pStat.SetInt(STAT_HEADSHOT_KILLS, kv.GetNum(STAT_HEADSHOT_KILLS));
+        pStat.SetInt(STAT_ROUNDSPLAYED, kv.GetNum(STAT_ROUNDSPLAYED));
+        pStat.SetInt(STAT_BOMBPLANTS, kv.GetNum(STAT_BOMBPLANTS));
+        pStat.SetInt(STAT_BOMBDEFUSES, kv.GetNum(STAT_BOMBDEFUSES));
+        pStat.SetInt(STAT_1K, kv.GetNum(STAT_1K));
+        pStat.SetInt(STAT_2K, kv.GetNum(STAT_2K));
+        pStat.SetInt(STAT_3K, kv.GetNum(STAT_3K));
+        pStat.SetInt(STAT_4K, kv.GetNum(STAT_4K));
+        pStat.SetInt(STAT_5K, kv.GetNum(STAT_5K));
+        pStat.SetInt(STAT_V1, kv.GetNum(STAT_V1));
+        pStat.SetInt(STAT_V2, kv.GetNum(STAT_V2));
+        pStat.SetInt(STAT_V3, kv.GetNum(STAT_V3));
+        pStat.SetInt(STAT_V4, kv.GetNum(STAT_V4));
+        pStat.SetInt(STAT_V5, kv.GetNum(STAT_V5));
+        pStat.SetInt(STAT_FIRSTKILL_T, kv.GetNum(STAT_FIRSTKILL_T));
+        pStat.SetInt(STAT_FIRSTKILL_CT, kv.GetNum(STAT_FIRSTKILL_CT));
+        pStat.SetInt(STAT_FIRSTDEATH_T, kv.GetNum(STAT_FIRSTDEATH_T));
+        pStat.SetInt(STAT_FIRSTDEATH_CT, kv.GetNum(STAT_FIRSTDEATH_CT));
+        pStat.SetInt(STAT_TRADEKILL, kv.GetNum(STAT_TRADEKILL));
+        pStat.SetInt(STAT_CONTRIBUTION_SCORE, kv.GetNum(STAT_CONTRIBUTION_SCORE));
+        req.Post("", pStat, RequestCallback);
       }
-
     } while (kv.GotoNextKey());
     kv.GoBack();
-  }
-}
-
-static void AddStringParam(Handle request, const char[] key, const char[] value) {
-  if (!SteamWorks_SetHTTPRequestGetOrPostParameter(request, key, value)) {
-    LogError("Failed to add http param %s=%s", key, value);
-  } else {
-    LogDebug("Added param %s=%s to request", key, value);
-  }
-}
-
-static void AddIntParam(Handle request, const char[] key, int value) {
-  char buffer[32];
-  IntToString(value, buffer, sizeof(buffer));
-  AddStringParam(request, key, buffer);
+    delete pStat;
+  } 
 }
 
 public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
   char teamString[64];
   GetTeamString(team, teamString, sizeof(teamString));
   LogDebug("Map Veto START team %s map vetoed %s", team, map);
-  Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/vetoUpdate", g_MatchID);
-  if (req != INVALID_HANDLE) {
-      AddStringParam(req, "map", map);
-      AddStringParam(req, "teamString", teamString);
-      AddStringParam(req, "pick_or_veto", "ban");
-      SteamWorks_SendHTTPRequest(req);
+  HTTPClient req = CreateRequest("match/%d/vetoUpdate", g_MatchID);
+  JSONObject vetoData = new JSONObject();
+  if (req != null) {
+    vetoData.SetString("key", g_APIKey);
+    vetoData.SetString("map", map);
+    vetoData.SetString("teamString", teamString);
+    vetoData.SetString("pick_or_veto", "ban");  
+    req.Post("", vetoData, RequestCallback);
   }
   LogDebug("Accepted Map Veto.");
+  delete vetoData;
 }
 
 public void Get5_OnDemoFinished(const char[] filename){
-  g_FTPEnable = g_FTPEnableCvar.BoolValue;
-  if (g_FTPEnable) {
+  if (g_EnableDemoUpload.BoolValue) {
     LogDebug("About to enter UploadDemo.");
     int mapNumber = MapNumber();
     char zippedFile[PLATFORM_MAX_PATH];
     char formattedURL[PLATFORM_MAX_PATH];
+    //TODO: Read file into an object, get it down to base64 and add to JSON array as string?
     UploadDemo(filename, zippedFile);
 
-    Handle req = CreateDemoRequest(k_EHTTPMethodPOST, "match/%d/map/%d/demo", g_MatchID, mapNumber-1);
+    HTTPClient req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
+    JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
     // Send URL to store in database to show users at end of match.
     // This requires anonmyous downloads on the FTP server unless
     // you give out usernames.
-    if (req != INVALID_HANDLE) {
-        Format(formattedURL, sizeof(formattedURL), "%sstatic/demos/%s", g_storedAPIURL, zippedFile);
-        LogDebug("Our URL: %s", formattedURL);
-        AddStringParam(req, "demoFile", formattedURL);
-        SteamWorks_SendHTTPRequest(req);
+    if (req != null) {
+      demoJSON.SetString("key", g_storedAPIKey);
+      Format(formattedURL, sizeof(formattedURL), "%sstatic/demos/%s", g_storedAPIURL, zippedFile);
+      LogDebug("Our URL: %s", formattedURL);
+      demoJSON.SetString("demoFile", formattedURL);
+      req.Post("", demoJSON, RequestCallback);
     }
     // Need to store as get5 recycles the configs before the demos finish recording.
     Format(g_storedAPIKey, sizeof(g_storedAPIKey), "");
     Format(g_storedAPIURL, sizeof(g_storedAPIURL), "");
+    delete demoJSON;
   }
 }
 
 public void UploadDemo(const char[] filename, char zippedFile[PLATFORM_MAX_PATH]){
-  char remoteDemoPath[PLATFORM_MAX_PATH];
-  if(filename[0]){
-    g_FTPHostCvar.GetString(g_FTPHost, sizeof(g_FTPHost));
-    g_FTPPort = g_FTPPortCvar.IntValue;
-    g_FTPUsernameCvar.GetString(g_FTPUsername, sizeof(g_FTPUsername));
-    g_FTPPasswordCvar.GetString(g_FTPPassword, sizeof(g_FTPPassword));
+  //char remoteDemoPath[PLATFORM_MAX_PATH];
+  //File newFile;
+  if(filename[0] && FileExists(filename)){
+    LogDebug("Begin uploading demoes. Read from file to data.");
+    //newFile = OpenFile(filename, "rb");
     
-    Format(zippedFile, sizeof(zippedFile), "%s", filename);
-    Format(remoteDemoPath, sizeof(remoteDemoPath), "%s/%s", g_FTPHost, zippedFile);
-    LogDebug("Our File is: %s and remote demo path of %s", zippedFile, remoteDemoPath);
-    System2FTPRequest ftpRequest = new System2FTPRequest(FtpResponseCallback, remoteDemoPath);
-    ftpRequest.AppendToFile = false;
-    ftpRequest.CreateMissingDirs = true;
-    ftpRequest.SetAuthentication(g_FTPUsername, g_FTPPassword);
-    ftpRequest.SetPort(g_FTPPort);
-    ftpRequest.SetProgressCallback(FtpProgressCallback);
-    LogDebug("Our File is: %s", zippedFile);
-
-    ftpRequest.SetInputFile(zippedFile);
-    ftpRequest.StartRequest(); 
   } else{
-    LogDebug("FTP Uploads Disabled OR Filename was empty (no demo to upload). Change config to enable.");
+    LogDebug("Demo Uploads Disabled OR Filename was empty (no demo to upload). Change config to enable.");
   }
-}
-
-
-public void FtpProgressCallback(System2FTPRequest request, int dlTotal, int dlNow, int ulTotal, int ulNow) {
-  char file[PLATFORM_MAX_PATH];
-  request.GetInputFile(file, sizeof(file));
-  if (strlen(file) > 0) {
-      LogDebug("Uploading %s file with %d bytes total, %d now", file, ulTotal, ulNow);
-  }
-}  
-
-public void FtpResponseCallback(bool success, const char[] error, System2FTPRequest request, System2FTPResponse response) {
-    if (success || StrContains(error, "Uploaded unaligned file size") > -1) {
-        char file[PLATFORM_MAX_PATH];
-        request.GetInputFile(file, sizeof(file));
-        if (strlen(file) > 0) {
-            if (DeleteFileIfExists(file)) {
-                LogDebug("Deleted file after complete.");
-            }
-        }
-    } else{
-      LogError("There was a problem: %s", error);
-    }
 }
 
 public void Get5_OnMapPicked(MatchTeam team, const char[] map){
+  LogDebug("Accepted Map Pick.");
   char teamString[64];
   GetTeamString(team, teamString, sizeof(teamString));
-  LogDebug("Map Pick START team %s map picked %s", team, map);
-  Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/vetoUpdate", g_MatchID);
-  if (req != INVALID_HANDLE) {
-      AddStringParam(req, "map", map);
-      AddStringParam(req, "teamString", teamString);
-      AddStringParam(req, "pick_or_veto", "pick");
-      SteamWorks_SendHTTPRequest(req);
+  LogDebug("Map Pick START team %s map vetoed %s", team, map);
+  HTTPClient req = CreateRequest("match/%d/vetoUpdate", g_MatchID);
+  JSONObject vetoData = new JSONObject();
+  if (req != null) {
+    vetoData.SetString("key", g_APIKey);
+    vetoData.SetString("map", map);
+    vetoData.SetString("teamString", teamString);
+    vetoData.SetString("pick_or_veto", "pick");
+    req.Post("", vetoData, RequestCallback);
   }
   LogDebug("Accepted Map Pick.");
+  delete vetoData;
 }
 
 public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
@@ -561,14 +443,18 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
   bool forfeit = kv.GetNum(STAT_SERIES_FORFEIT, 0) != 0;
   delete kv;
 
-  Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%d/finish", g_MatchID);
-  if (req != INVALID_HANDLE) {
-    AddStringParam(req, "winner", winnerString);
-    AddIntParam(req, "forfeit", forfeit);
-    SteamWorks_SendHTTPRequest(req);
+  HTTPClient req = CreateRequest("match/%d/finish", g_MatchID);
+  JSONObject seriesRes = new JSONObject();
+  if (req != null) {
+    seriesRes.SetString("key", g_APIKey);
+    seriesRes.SetString("winner", winnerString);
+    seriesRes.SetInt("team1score", team1MapScore);
+    seriesRes.SetInt("team2score", team2MapScore);
+    seriesRes.SetInt("forfeit", forfeit);
+    req.Post("", seriesRes, RequestCallback);
   }
-
   g_APIKeyCvar.SetString("");
+  delete seriesRes;
 }
 
 public void Get5_OnRoundStatsUpdated() {
