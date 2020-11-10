@@ -163,7 +163,7 @@ static HTTPClient CreateDemoRequest(const char[] apiMethod, any:...) {
 }
 
 public void RequestCallback(HTTPResponse response, any value) {
-    if (response.Status != HTTPStatus_OK) {
+    if (response.Status == HTTPStatus_InternalServerError) {
         LogError("[ERR] API request failed, HTTP status code: %d", response.Status);
         char sData[1024];
         response.Data.ToString(sData, sizeof(sData), JSON_INDENT(4));
