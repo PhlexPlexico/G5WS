@@ -1,0 +1,94 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Create Release Executable
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      # Runs a set of commands using the runners shell
+      - name: Build Project
+        run: |
+          download_files() {
+            wget https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6499-linux.tar.gz
+            wget https://github.com/ErikMinekus/sm-ripext/releases/download/1.2.2/sm-ripext-1.2.2-linux.tar.gz
+          }
+          
+          create_temp_directory() {
+              mkdir tmp
+          }
+
+          untar_files() {
+              mv *.tar* tmp/
+              cd tmp
+              tar -zxvf sourcemod*.tar.gz
+              tar -zxvf sm-rip*.tar.gz
+          }
+
+          move_api_files() {
+              cp -r ../scripting/* ./addons/sourcemod/scripting/
+              cp -r ../translations/* ./addons/sourcemod/translations/
+          }
+
+          compile() {
+              cd ./addons/sourcemod/scripting
+              chmod +x spcomp64
+              ./spcomp64 get5_apistats.sp
+              mv get5_apistats.smx ../../../../
+          }
+
+          remove_tmp() {
+              cd ../../../../
+              rm -rf ./tmp/
+          }
+          create_zip() {
+            zip get5_apistats get5_apistats.smx
+            rm -f get5_apistats.smx
+          }
+          download_files
+          create_temp_directory
+          untar_files
+          move_api_files
+          compile
+          remove_tmp
+          create_zip
+      - name: Create a Release
+        id: create_release
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # The name of the tag. This should come from the webhook payload, `github.GITHUB_REF` when a user pushes a new tag
+          tag_name: ${{ github.ref }}
+          # The name of the release. For example, `Release v1.0.1`
+          release_name: Release ${{ github.ref }}
+          # Text describing the contents of the tag.
+          # `true` to create a draft (unpublished) release, `false` to create a published one. Default: `false`
+          draft: true
+          # `true` to identify the release as a prerelease. `false` to identify the release as a full release. Default: `false`
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./get5_apistats.zip
+          asset_name: get5_apistats.zip
+          asset_content_type: application/zip
