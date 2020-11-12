@@ -52,14 +52,14 @@ public Plugin myinfo = {
   name = "Get5 API Integration - RIPEXT",
   author = "splewis/phlexplexico",
   description = "Records match stats to G5API.",
-  version = "1.11",
+  version = "2.0",
   url = "https://github.com/phlexplexico/get5-web"
 };
 // clang-format on
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "get5_api");
-  LogDebug("OnPluginStart version=1.11");
+  LogDebug("OnPluginStart version=2.0");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -171,6 +171,14 @@ public void RequestCallback(HTTPResponse response, any value) {
         return;
     } 
 }
+
+void OnDemoUploaded(HTTPStatus status, any value)
+{
+  if (status != HTTPStatus_OK) {
+      LogError("[ERR] Demo request failed, HTTP status code: %d", status);
+      return;
+  }
+}  
 
 public void Get5_OnBackupRestore() {
   char matchid[64];
@@ -379,11 +387,7 @@ public void Get5_OnDemoFinished(const char[] filename){
   if (g_EnableDemoUpload.BoolValue) {
     LogDebug("About to enter UploadDemo.");
     int mapNumber = MapNumber();
-    char zippedFile[PLATFORM_MAX_PATH];
-    char formattedURL[PLATFORM_MAX_PATH];
-    //TODO: Read file into an object, get it down to base64 and add to JSON array as string?
-    UploadDemo(filename, zippedFile);
-
+    char formattedName[PLATFORM_MAX_PATH];
     HTTPClient req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
     JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
@@ -392,27 +396,21 @@ public void Get5_OnDemoFinished(const char[] filename){
     // you give out usernames.
     if (req != null) {
       demoJSON.SetString("key", g_storedAPIKey);
-      Format(formattedURL, sizeof(formattedURL), "%sstatic/demos/%s", g_storedAPIURL, zippedFile);
-      LogDebug("Our URL: %s", formattedURL);
-      demoJSON.SetString("demoFile", formattedURL);
+      Format(formattedName, sizeof(formattedName), "%d_%s_vs_%s.dem", g_MatchID, MatchTeam_Team1, MatchTeam_Team2);
+      LogDebug("Our demo string: %s", formattedName);
+      demoJSON.SetString("demoFile", formattedName);
       req.Post("", demoJSON, RequestCallback);
+
+      req = CreateDemoRequest("match/%d/map/%d/demo/upload/%s", g_MatchID, mapNumber-1, g_storedAPIKey);
+      if (req != null) {
+        req.UploadFile("", filename, OnDemoUploaded);
+      }
     }
+
     // Need to store as get5 recycles the configs before the demos finish recording.
     Format(g_storedAPIKey, sizeof(g_storedAPIKey), "");
     Format(g_storedAPIURL, sizeof(g_storedAPIURL), "");
     delete demoJSON;
-  }
-}
-
-public void UploadDemo(const char[] filename, char zippedFile[PLATFORM_MAX_PATH]){
-  //char remoteDemoPath[PLATFORM_MAX_PATH];
-  //File newFile;
-  if(filename[0] && FileExists(filename)){
-    LogDebug("Begin uploading demoes. Read from file to data.");
-    //newFile = OpenFile(filename, "rb");
-    
-  } else{
-    LogDebug("Demo Uploads Disabled OR Filename was empty (no demo to upload). Change config to enable.");
   }
 }
 
