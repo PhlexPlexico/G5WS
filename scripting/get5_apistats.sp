@@ -357,6 +357,7 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
         pStat.SetInt(STAT_FIRSTDEATH_T, kv.GetNum(STAT_FIRSTDEATH_T));
         pStat.SetInt(STAT_FIRSTDEATH_CT, kv.GetNum(STAT_FIRSTDEATH_CT));
         pStat.SetInt(STAT_TRADEKILL, kv.GetNum(STAT_TRADEKILL));
+        pStat.SetInt(STAT_KAST, kv.GetNum(STAT_KAST));
         pStat.SetInt(STAT_CONTRIBUTION_SCORE, kv.GetNum(STAT_CONTRIBUTION_SCORE));
         req.Post("", pStat, RequestCallback);
       }
