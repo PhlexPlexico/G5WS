@@ -385,9 +385,8 @@ public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
 
 public void Get5_OnDemoFinished(const char[] filename){
   if (g_EnableDemoUpload.BoolValue) {
-    LogDebug("About to enter UploadDemo.");
+    LogDebug("About to enter UploadDemo. SO YES WE ARE.");
     int mapNumber = MapNumber();
-    char formattedName[PLATFORM_MAX_PATH];
     HTTPClient req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
     JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
@@ -396,14 +395,15 @@ public void Get5_OnDemoFinished(const char[] filename){
     // you give out usernames.
     if (req != null) {
       demoJSON.SetString("key", g_storedAPIKey);
-      Format(formattedName, sizeof(formattedName), "%d_%s_vs_%s.dem", g_MatchID, MatchTeam_Team1, MatchTeam_Team2);
-      LogDebug("Our demo string: %s", formattedName);
-      demoJSON.SetString("demoFile", formattedName);
+      LogDebug("Our demo string: %s", filename);
+      demoJSON.SetString("demoFile", filename);
       req.Post("", demoJSON, RequestCallback);
 
       req = CreateDemoRequest("match/%d/map/%d/demo/upload/%s", g_MatchID, mapNumber-1, g_storedAPIKey);
       if (req != null) {
+        LogDebug("Uploading demo to server...");
         req.UploadFile("", filename, OnDemoUploaded);
+        LogDebug("COMPLETE!");
       }
     }
 
