@@ -52,7 +52,7 @@ public Plugin myinfo = {
   name = "Get5 API Integration - RIPEXT",
   author = "splewis/phlexplexico",
   description = "Records match stats to G5API.",
-  version = "2.0",
+  version = "2.0.2",
   url = "https://github.com/phlexplexico/get5-web"
 };
 // clang-format on
