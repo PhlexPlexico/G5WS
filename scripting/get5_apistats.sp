@@ -386,7 +386,8 @@ public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
 }
 
 public void Get5_OnDemoFinished(const char[] filename){
-  if (g_EnableDemoUpload.BoolValue) {
+  // Check if demos upload enabled, and filename is not empty.
+  if (g_EnableDemoUpload.BoolValue && filename[0]) {
     LogDebug("About to enter UploadDemo. SO YES WE ARE.");
     int mapNumber = MapNumber();
     HTTPClient req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
@@ -437,7 +438,8 @@ public void Get5_OnMapPicked(MatchTeam team, const char[] map){
 public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
   char winnerString[64];
   GetTeamString(seriesWinner, winnerString, sizeof(winnerString));
-
+  
+  bool isCancelled = StrEqual(winnerString, "none", false);
   KeyValues kv = new KeyValues("Stats");
   Get5_GetMatchStats(kv);
   bool forfeit = kv.GetNum(STAT_SERIES_FORFEIT, 0) != 0;
@@ -445,7 +447,7 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
 
   HTTPClient req = CreateRequest("match/%d/finish", g_MatchID);
   JSONObject seriesRes = new JSONObject();
-  if (req != null) {
+  if (req != null && !isCancelled) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", team1MapScore);
