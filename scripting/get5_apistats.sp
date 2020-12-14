@@ -302,7 +302,8 @@ public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Sco
 
   HTTPClient req = CreateRequest("match/%d/map/%d/finish", g_MatchID, mapNumber);
   JSONObject mtchRes = new JSONObject();
-  if (req != null && mapNumber > -1) {
+  bool isCancelled = StrEqual(winnerString, "none", false);
+  if (req != null && mapNumber > -1 && !isCancelled) {
     mtchRes.SetString("key", g_APIKey);
     mtchRes.SetInt("team1score", team1Score);
     mtchRes.SetInt("team2score", team2Score);
