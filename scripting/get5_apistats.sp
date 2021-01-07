@@ -360,6 +360,8 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
         pStat.SetInt(STAT_TRADEKILL, kv.GetNum(STAT_TRADEKILL));
         pStat.SetInt(STAT_KAST, kv.GetNum(STAT_KAST));
         pStat.SetInt(STAT_CONTRIBUTION_SCORE, kv.GetNum(STAT_CONTRIBUTION_SCORE));
+        pStat.SetInt(STAT_UTILITY_DAMAGE, kv.GetNum(STAT_UTILITY_DAMAGE));
+        pStat.SetInt(STAT_KNIFE_KILLS, kv.GetNum(STAT_KNIFE_KILLS));
         req.Post("", pStat, RequestCallback);
       }
     } while (kv.GotoNextKey());
