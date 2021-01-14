@@ -1,5 +1,5 @@
-# Get5-Web API Plugin
-Plugin For My Forked Get5-Web Panel.
+# Get5 Web Stats (G5WS)
+Sourcemod plugin for G5API.
 
 This plugin is to be used in conjuction with [G5API](https://github.com/PhlexPlexico/G5API). It includes various changes, such as tracking vetoes to a database, and uploading the demo of a match once the match is completed.
 
@@ -10,7 +10,7 @@ In order to compile this and use it on a server, you must have:
 
 Once these requirements are met, you may build the plugin with `spcomp`.  
 If you do not wish to build from source, the latest version of the 
-plugin is both available in the releases [get5-webapi](https://github.com/PhlexPlexico/get5-webapi/releases/download/latest/get5_apistats.smx).
+plugin is both available in the releases [G5WS](https://github.com/PhlexPlexico/G5WS/releases/download/latest/get5_apistats.smx).
 
 The extension REST In PAWN is required in order to run this.
 

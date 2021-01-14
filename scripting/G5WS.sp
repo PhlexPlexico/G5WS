@@ -1,7 +1,7 @@
 /**
  * =============================================================================
- * Get5 web API integration
- * Copyright (C) 2016. Sean Lewis.  All rights reserved.
+ * Get5 Stats (G5WS)
+ * Copyright (C) 2021. Sean Lewis/Phlex Plexico.  All rights reserved.
  * =============================================================================
  *
  * This program is free software: you can redistribute it and/or modify
@@ -49,17 +49,17 @@ ConVar g_EnableDemoUpload;
 
 // clang-format off
 public Plugin myinfo = {
-  name = "Get5 API Integration - RIPEXT",
-  author = "splewis/phlexplexico",
-  description = "Records match stats to G5API.",
-  version = "2.0.2",
-  url = "https://github.com/phlexplexico/get5-web"
+  name = "Get5 Web Stats",
+  author = "phlexplexico/splewis",
+  description = "Sends match information to G5API.",
+  version = "2.0.3",
+  url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
 
 public void OnPluginStart() {
-  InitDebugLog("get5_debug", "get5_api");
-  LogDebug("OnPluginStart version=2.0");
+  InitDebugLog("get5_debug", "G5WS");
+  LogDebug("OnPluginStart version=2.0.3");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -395,9 +395,7 @@ public void Get5_OnDemoFinished(const char[] filename){
     HTTPClient req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
     JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
-    // Send URL to store in database to show users at end of match.
-    // This requires anonmyous downloads on the FTP server unless
-    // you give out usernames.
+    // Send demo file name to store in database to show users at end of match.
     if (req != null) {
       demoJSON.SetString("key", g_storedAPIKey);
       LogDebug("Our demo string: %s", filename);

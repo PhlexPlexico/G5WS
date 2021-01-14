@@ -47,8 +47,8 @@ jobs:
           compile() {
               cd ./addons/sourcemod/scripting
               chmod +x spcomp64
-              ./spcomp64 get5_apistats.sp
-              mv get5_apistats.smx ../../../../
+              ./spcomp64 G5WS.sp
+              mv G5WS.smx ../../../../
           }
 
           remove_tmp() {
@@ -56,8 +56,8 @@ jobs:
               rm -rf ./tmp/
           }
           create_zip() {
-            zip get5_apistats get5_apistats.smx
-            rm -f get5_apistats.smx
+            zip G5WS G5WS.smx
+            rm -f G5WS.smx
           }
           download_files
           create_temp_directory
@@ -85,6 +85,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./get5_apistats.zip
-          asset_name: get5_apistats.zip
+          asset_path: ./G5WS.zip
+          asset_name: G5WS.zip
           asset_content_type: application/zip
