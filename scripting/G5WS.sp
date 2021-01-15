@@ -402,7 +402,6 @@ public void Get5_OnDemoFinished(const char[] filename){
       LogDebug("Our demo string: %s", filename);
       demoJSON.SetString("demoFile", filename);
       req.Post("", demoJSON, RequestCallback);
-
       req = CreateDemoRequest("match/%d/map/%d/demo/upload/%s", g_MatchID, mapNumber-1, g_storedAPIKey);
       if (req != null) {
         LogDebug("Uploading demo to server...");
