@@ -316,6 +316,7 @@ public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Sco
 public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
   char name[MAX_NAME_LENGTH];
   char auth[AUTH_LENGTH];
+  int clientNum;
   int mapNumber = MapNumber();
 
   if (kv.GotoFirstSubKey()) {
@@ -323,13 +324,14 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
     pStat.SetString("key", g_APIKey);
     do {
       kv.GetSectionName(auth, sizeof(auth));
+      clientNum = AuthToClient(auth);
       kv.GetString("name", name, sizeof(name));
       char teamString[16];
       GetTeamString(team, teamString, sizeof(teamString));
 
       HTTPClient req = CreateRequest("match/%d/map/%d/player/%s/update", g_MatchID,
                                  mapNumber, auth);
-      if (req != null) {
+      if (req != null && !isClientCoaching(clientNum)) {
         pStat.SetString("team", teamString);
         pStat.SetString("name", name);
         pStat.SetInt(STAT_KILLS, kv.GetNum(STAT_KILLS));
