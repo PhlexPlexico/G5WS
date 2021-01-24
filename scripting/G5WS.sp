@@ -52,14 +52,14 @@ public Plugin myinfo = {
   name = "Get5 Web Stats",
   author = "phlexplexico/splewis",
   description = "Sends match information to G5API.",
-  version = "2.0.3",
+  version = "2.1",
   url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "G5WS");
-  LogDebug("OnPluginStart version=2.0.3");
+  LogDebug("OnPluginStart version=2.1");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -365,6 +365,8 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
         pStat.SetInt(STAT_MVP, kv.GetNum(STAT_MVP));
         pStat.SetInt(STAT_UTILITY_DAMAGE, kv.GetNum(STAT_UTILITY_DAMAGE));
         pStat.SetInt(STAT_KNIFE_KILLS, kv.GetNum(STAT_KNIFE_KILLS));
+        pStat.SetInt(STAT_ENEMIES_FLASHED, kv.GetNum(STAT_ENEMIES_FLASHED));
+        pStat.SetInt(STAT_FRIENDLIES_FLASHED, kv.GetNum(STAT_FRIENDLIES_FLASHED));
         req.Post("", pStat, RequestCallback);
       }
     } while (kv.GotoNextKey());
