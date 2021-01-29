@@ -212,24 +212,26 @@ public void CheckForLogo(const char[] logo) {
   }
 
   char logoPath[PLATFORM_MAX_PATH];
+  char endPoint[32];
   // change png to svg because it's better supported
   if (g_UseSVGCvar.BoolValue) {
     Format(logoPath, sizeof(logoPath), "%s/%s.svg", g_LogoBasePath, logo);
+    Format(endPoint, sizeof(endPoint), "%s.svg", logo);
   } else {
     Format(logoPath, sizeof(logoPath), "%s/%s.png", g_LogoBasePath, logo);
+    Format(endPoint, sizeof(endPoint), "%s.png", logo);
   }
 
   // Try to fetch the file if we don't have it.
   if (!FileExists(logoPath)) {
     LogDebug("Fetching logo for %s", logo);
-    HTTPClient req = g_UseSVGCvar.BoolValue
-                     ? CreateRequest("/static/img/logos/%s.svg", logo)
-                     : CreateRequest("/static/img/logos/%s.png", logo);
+    HTTPClient req =  CreateRequest("static/img/logos/", logo);
 
     if (req == null) {
       return;
     }
-    req.DownloadFile("", logoPath, LogoCallback);
+    req.DownloadFile(endPoint, logoPath, LogoCallback);
+    
     LogMessage("Saved logo for %s at %s", logo, logoPath);
   }
 }
@@ -331,7 +333,7 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
 
       HTTPClient req = CreateRequest("match/%d/map/%d/player/%s/update", g_MatchID,
                                  mapNumber, auth);
-      if (req != null && !isClientCoaching(clientNum)) {
+      if (req != null && !IsClientCoaching(clientNum)) {
         pStat.SetString("team", teamString);
         pStat.SetString("name", name);
         pStat.SetInt(STAT_KILLS, kv.GetNum(STAT_KILLS));
