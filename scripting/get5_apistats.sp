@@ -440,7 +440,6 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
   char winnerString[64];
   GetTeamString(seriesWinner, winnerString, sizeof(winnerString));
   
-  bool isCancelled = StrEqual(winnerString, "none", false);
   KeyValues kv = new KeyValues("Stats");
   Get5_GetMatchStats(kv);
   bool forfeit = kv.GetNum(STAT_SERIES_FORFEIT, 0) != 0;
@@ -448,7 +447,7 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
 
   HTTPClient req = CreateRequest("match/%d/finish", g_MatchID);
   JSONObject seriesRes = new JSONObject();
-  if (req != null && !isCancelled) {
+  if (req != null) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", team1MapScore);
