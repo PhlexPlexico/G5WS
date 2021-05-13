@@ -1,7 +1,7 @@
 /**
  * =============================================================================
- * Get5 web API integration
- * Copyright (C) 2016. Sean Lewis.  All rights reserved.
+ * Get5 Stats (G5WS)
+ * Copyright (C) 2021. Sean Lewis/Phlex Plexico.  All rights reserved.
  * =============================================================================
  *
  * This program is free software: you can redistribute it and/or modify
@@ -49,17 +49,17 @@ ConVar g_EnableDemoUpload;
 
 // clang-format off
 public Plugin myinfo = {
-  name = "Get5 API Integration - RIPEXT",
-  author = "splewis/phlexplexico",
-  description = "Records match stats to G5API.",
-  version = "2.0.2",
-  url = "https://github.com/phlexplexico/get5-web"
+  name = "Get5 Web Stats",
+  author = "phlexplexico/splewis",
+  description = "Sends match information to G5API.",
+  version = "2.1",
+  url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
 
 public void OnPluginStart() {
-  InitDebugLog("get5_debug", "get5_api");
-  LogDebug("OnPluginStart version=2.0");
+  InitDebugLog("get5_debug", "G5WS");
+  LogDebug("OnPluginStart version=2.1");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -212,24 +212,26 @@ public void CheckForLogo(const char[] logo) {
   }
 
   char logoPath[PLATFORM_MAX_PATH];
+  char endPoint[32];
   // change png to svg because it's better supported
   if (g_UseSVGCvar.BoolValue) {
     Format(logoPath, sizeof(logoPath), "%s/%s.svg", g_LogoBasePath, logo);
+    Format(endPoint, sizeof(endPoint), "%s.svg", logo);
   } else {
     Format(logoPath, sizeof(logoPath), "%s/%s.png", g_LogoBasePath, logo);
+    Format(endPoint, sizeof(endPoint), "%s.png", logo);
   }
 
   // Try to fetch the file if we don't have it.
   if (!FileExists(logoPath)) {
     LogDebug("Fetching logo for %s", logo);
-    HTTPClient req = g_UseSVGCvar.BoolValue
-                     ? CreateRequest("/static/img/logos/%s.svg", logo)
-                     : CreateRequest("/static/img/logos/%s.png", logo);
+    HTTPClient req =  CreateRequest("static/img/logos/", logo);
 
     if (req == null) {
       return;
     }
-    req.DownloadFile("", logoPath, LogoCallback);
+    req.DownloadFile(endPoint, logoPath, LogoCallback);
+    
     LogMessage("Saved logo for %s at %s", logo, logoPath);
   }
 }
@@ -316,6 +318,7 @@ public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Sco
 public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
   char name[MAX_NAME_LENGTH];
   char auth[AUTH_LENGTH];
+  int clientNum;
   int mapNumber = MapNumber();
 
   if (kv.GotoFirstSubKey()) {
@@ -323,13 +326,14 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
     pStat.SetString("key", g_APIKey);
     do {
       kv.GetSectionName(auth, sizeof(auth));
+      clientNum = AuthToClient(auth);
       kv.GetString("name", name, sizeof(name));
       char teamString[16];
       GetTeamString(team, teamString, sizeof(teamString));
 
       HTTPClient req = CreateRequest("match/%d/map/%d/player/%s/update", g_MatchID,
                                  mapNumber, auth);
-      if (req != null) {
+      if (req != null && !IsClientCoaching(clientNum)) {
         pStat.SetString("team", teamString);
         pStat.SetString("name", name);
         pStat.SetInt(STAT_KILLS, kv.GetNum(STAT_KILLS));
@@ -361,6 +365,10 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
         pStat.SetInt(STAT_KAST, kv.GetNum(STAT_KAST));
         pStat.SetInt(STAT_CONTRIBUTION_SCORE, kv.GetNum(STAT_CONTRIBUTION_SCORE));
         pStat.SetInt(STAT_MVP, kv.GetNum(STAT_MVP));
+        pStat.SetInt(STAT_UTILITY_DAMAGE, kv.GetNum(STAT_UTILITY_DAMAGE));
+        pStat.SetInt(STAT_KNIFE_KILLS, kv.GetNum(STAT_KNIFE_KILLS));
+        pStat.SetInt(STAT_ENEMIES_FLASHED, kv.GetNum(STAT_ENEMIES_FLASHED));
+        pStat.SetInt(STAT_FRIENDLIES_FLASHED, kv.GetNum(STAT_FRIENDLIES_FLASHED));
         req.Post("", pStat, RequestCallback);
       }
     } while (kv.GotoNextKey());
@@ -394,15 +402,12 @@ public void Get5_OnDemoFinished(const char[] filename){
     HTTPClient req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
     JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
-    // Send URL to store in database to show users at end of match.
-    // This requires anonmyous downloads on the FTP server unless
-    // you give out usernames.
+    // Send demo file name to store in database to show users at end of match.
     if (req != null) {
       demoJSON.SetString("key", g_storedAPIKey);
       LogDebug("Our demo string: %s", filename);
       demoJSON.SetString("demoFile", filename);
       req.Post("", demoJSON, RequestCallback);
-
       req = CreateDemoRequest("match/%d/map/%d/demo/upload/%s", g_MatchID, mapNumber-1, g_storedAPIKey);
       if (req != null) {
         LogDebug("Uploading demo to server...");
