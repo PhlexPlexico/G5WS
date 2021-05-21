@@ -395,23 +395,23 @@ public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
 public void Get5_OnSidePicked(MatchTeam team, const char[] map, int side) {
   // Note: CS_TEAM_CT = 3, CS_TEAM_T = 2
   char teamString[64];
-  char side[3];
+  char charSide[3];
   GetTeamString(team, teamString, sizeof(teamString));
   LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", side, map, team);
-   HTTPClient req = CreateRequest("match/%d/vetoSideUpdate", g_MatchID);
+  HTTPClient req = CreateRequest("match/%d/vetoSideUpdate", g_MatchID);
   JSONObject vetoSideData = new JSONObject();
   if (side == CS_TEAM_CT) {
-    Format(side, sizeof(side), "CT");
+    Format(charSide, sizeof(charSide), "CT");
   } else if (side == CS_TEAM_T) {
-    Format(side, sizeof(side), "T");
+    Format(charSide, sizeof(charSide), "T");
   } else {
-    Format(side, sizeof(side), "UNK");
+    Format(charSide, sizeof(charSide), "UNK");
   }
   if (req != null) {
     vetoSideData.SetString("key", g_APIKey);
     vetoSideData.SetString("map", map);
     vetoSideData.SetString("teamString", teamString);
-    vetoSideData.SetString("side", side);
+    vetoSideData.SetString("side", charSide);
     req.Post("", vetoSideData, RequestCallback);
   }
   LogDebug("Accepted side picked for map %s.", map);
