@@ -49,8 +49,8 @@ ConVar g_EnableDemoUpload;
 
 // clang-format off
 public Plugin myinfo = {
-  name = "Get5 Web Stats",
-  author = "phlexplexico/splewis",
+  name = "G5WS - Get5 Web Stats",
+  author = "phlexplexico",
   description = "Sends match information to G5API.",
   version = "2.1",
   url = "https://github.com/phlexplexico/G5WS"
@@ -77,8 +77,6 @@ public void OnPluginStart() {
   RegConsoleCmd("get5_web_avaliable",
                 Command_Avaliable);  // legacy version since I'm bad at spelling
   RegConsoleCmd("get5_web_available", Command_Avaliable);
-  /** Create and exec plugin's configuration file **/
-  
 }
 
 public Action Command_Avaliable(int client, int args) {
@@ -390,8 +388,34 @@ public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
     vetoData.SetString("pick_or_veto", "ban");  
     req.Post("", vetoData, RequestCallback);
   }
-  LogDebug("Accepted Map Veto.");
+  LogDebug("Accepted Map Veto for team %s.", teamString);
   delete vetoData;
+}
+
+public void Get5_OnSidePicked(MatchTeam team, const char[] map, int side) {
+  // Note: CS_TEAM_CT = 3, CS_TEAM_T = 2
+  char teamString[64];
+  char charSide[3];
+  GetTeamString(team, teamString, sizeof(teamString));
+  LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", side, map, team);
+  HTTPClient req = CreateRequest("match/%d/vetoSideUpdate", g_MatchID);
+  JSONObject vetoSideData = new JSONObject();
+  if (side == CS_TEAM_CT) {
+    Format(charSide, sizeof(charSide), "CT");
+  } else if (side == CS_TEAM_T) {
+    Format(charSide, sizeof(charSide), "T");
+  } else {
+    Format(charSide, sizeof(charSide), "UNK");
+  }
+  if (req != null) {
+    vetoSideData.SetString("key", g_APIKey);
+    vetoSideData.SetString("map", map);
+    vetoSideData.SetString("teamString", teamString);
+    vetoSideData.SetString("side", charSide);
+    req.Post("", vetoSideData, RequestCallback);
+  }
+  LogDebug("Accepted side picked for map %s.", map);
+  delete vetoSideData;
 }
 
 public void Get5_OnDemoFinished(const char[] filename){
