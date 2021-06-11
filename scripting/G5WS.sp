@@ -182,7 +182,7 @@ public void RequestCallback(HTTPResponse response, any value) {
         return;
     } 
     response.Data.ToString(sData, sizeof(sData), JSON_INDENT(4));
-    PrintToServer("[OK] %s Response:\n%s", sHTTPTags[value], sData);
+    LogDebug("[OK] %s Response:\n%s", sHTTPTags[value], sData);
 }
 
 void OnDemoUploaded(HTTPStatus status, any value)
