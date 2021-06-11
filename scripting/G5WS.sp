@@ -181,8 +181,6 @@ public void RequestCallback(HTTPResponse response, any value) {
         LogError("[ERR] Response:\n%s", sData);
         return;
     } 
-    response.Data.ToString(sData, sizeof(sData), JSON_INDENT(4));
-    LogDebug("[OK] %s Response:\n%s", sHTTPTags[value], sData);
 }
 
 void OnDemoUploaded(HTTPStatus status, any value)
