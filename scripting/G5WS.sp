@@ -44,19 +44,6 @@ char g_storedAPIKey[128];
 
 ConVar g_EnableDemoUpload;
 
-char sHTTPTags[][] = {
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "GZIP",
-    "AUTH",
-    "BEARER",
-    "REDIRECT",
-    "FORM",
-};
-
 #define LOGO_DIR "materials/panorama/images/tournaments/teams"
 #define LEGACY_LOGO_DIR "resource/flash/econ/tournaments/teams"
 
