@@ -128,6 +128,7 @@ static HTTPRequest CreateRequest(const char[] apiMethod, any:...) {
   LogDebug("Trying to create request to url %s", formattedUrl);
 
   HTTPRequest req = new HTTPRequest(formattedUrl);
+  req.SetHeader("Transfer-Encoding", "")
   if (StrEqual(g_APIKey, "")) {
     // Not using a web interface.
     return null;
