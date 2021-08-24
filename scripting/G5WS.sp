@@ -120,6 +120,10 @@ public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] ne
 
 static HTTPRequest CreateRequest(const char[] apiMethod, any:...) {
   char url[1024];
+  if (StrEqual(g_APIKey, "")) {
+    // Not using a web interface.
+    return null;
+  }
   Format(url, sizeof(url), "%s%s", g_APIURL, apiMethod);
   LogDebug("Our URL is: %s", url);
   char formattedUrl[1024];
@@ -129,10 +133,7 @@ static HTTPRequest CreateRequest(const char[] apiMethod, any:...) {
 
   HTTPRequest req = new HTTPRequest(formattedUrl);
   req.SetHeader("Transfer-Encoding", "");
-  if (StrEqual(g_APIKey, "")) {
-    // Not using a web interface.
-    return null;
-  } else if (req == INVALID_HANDLE) {
+  if (req == INVALID_HANDLE) {
     LogError("Failed to create request to %s", formattedUrl);
     return null;
   } else {
