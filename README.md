@@ -14,5 +14,7 @@ plugin is both available in the releases [G5WS](https://github.com/PhlexPlexico/
 
 The extension REST In PAWN is required in order to run this.
 
+Please note that if you are making calls from a Windows Game Server, you **must** run the calls over HTTPS.
+
 ## Thanks To
 [splewis](https://github.com/splewis) for the initial plugin. It was stated that this could be used as a modified product, or forked. 
