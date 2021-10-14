@@ -52,7 +52,7 @@ public Plugin myinfo = {
   name = "G5WS - Get5 Web Stats",
   author = "phlexplexico",
   description = "Sends match information to G5API.",
-  version = "3.0",
+  version = "3.0.1",
   url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
@@ -479,7 +479,10 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
 
   HTTPRequest req = CreateRequest("match/%d/finish", g_MatchID);
   JSONObject seriesRes = new JSONObject();
-  if (req != null && !isCancelled) {
+  // Need to check that we are indeed a best of two match as well.
+  // This has been a source of double sending match results and producing errors.
+  // So we really need to check if we are in an edge case BO2 where a score is 1-1.
+  if (req != null && (g_BO2Match || !isCancelled)) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", team1MapScore);
