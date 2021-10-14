@@ -482,7 +482,7 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
   // Need to check that we are indeed a best of two match as well.
   // This has been a source of double sending match results and producing errors.
   // So we really need to check if we are in an edge case BO2 where a score is 1-1.
-  if (req != null && (g_BO2Match || !isCancelled)) {
+  if (req != null && (team1MapScore == team2MapScore || !isCancelled)) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", team1MapScore);
