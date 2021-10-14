@@ -52,7 +52,7 @@ public Plugin myinfo = {
   name = "G5WS - Get5 Web Stats",
   author = "phlexplexico",
   description = "Sends match information to G5API.",
-  version = "2.1",
+  version = "3.0",
   url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
