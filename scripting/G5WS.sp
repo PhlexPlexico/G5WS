@@ -333,7 +333,7 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
 
       HTTPRequest req = CreateRequest("match/%d/map/%d/player/%s/update", g_MatchID,
                                  mapNumber, auth);
-      if (req != null && !IsClientCoaching(clientNum)) {
+      if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
         pStat.SetString("team", teamString);
         pStat.SetString("name", name);
         pStat.SetInt(STAT_KILLS, kv.GetNum(STAT_KILLS));
