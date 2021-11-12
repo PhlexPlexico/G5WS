@@ -4,7 +4,7 @@
 #define MAX_FLOAT_STRING_LENGTH 32
 #define AUTH_LENGTH 64
 
-// Dummy value for when we need to write a keyvalue string, but we don't care about he value.
+// Dummy value for when we need to write a keyvalue string, but we don't care about the value.
 // Trying to write an empty string often results in the keyvalue not being written, so we use this.
 #define KEYVALUE_STRING_PLACEHOLDER "__placeholder"
 
@@ -209,7 +209,7 @@ stock bool IsPaused() {
 }
 
 // Pauses and returns if the match will automatically unpause after the duration ends.
-stock bool Pause(int pauseTime = 0, int csTeam = CS_TEAM_NONE) {
+stock bool Pause(int pauseTime = 0, int csTeam = CS_TEAM_NONE, int pausesLeft = 1) {
   if (pauseTime == 0 || csTeam == CS_TEAM_SPECTATOR || csTeam == CS_TEAM_NONE) {
     ServerCommand("mp_pause_match");
     return false;
@@ -218,9 +218,11 @@ stock bool Pause(int pauseTime = 0, int csTeam = CS_TEAM_NONE) {
     if (csTeam == CS_TEAM_T) {
       GameRules_SetProp("m_bTerroristTimeOutActive", true);
       GameRules_SetPropFloat("m_flTerroristTimeOutRemaining", float(pauseTime));
+      GameRules_SetProp("m_nTerroristTimeOuts", pausesLeft);
     } else if (csTeam == CS_TEAM_CT) {
       GameRules_SetProp("m_bCTTimeOutActive", true);
       GameRules_SetPropFloat("m_flCTTimeOutRemaining", float(pauseTime));
+      GameRules_SetProp("m_nCTTimeOuts", pausesLeft);
     }
     return true;
   }
@@ -260,13 +262,17 @@ stock void SetTeamInfo(int csTeam, const char[] name, const char[] flag = "",
 
   // Add Ready/Not ready tags to team name if in warmup.
   char taggedName[MAX_CVAR_LENGTH];
-  if ((g_GameState == Get5State_Warmup || g_GameState == Get5State_PreVeto) &&
-      !g_DoingBackupRestoreNow) {
-    MatchTeam matchTeam = CSTeamToMatchTeam(csTeam);
-    if (IsTeamReady(matchTeam)) {
-      Format(taggedName, sizeof(taggedName), "%T %s", "ReadyTag", LANG_SERVER, name);
+  if (g_ReadyTeamTagCvar.BoolValue) {
+    if ((g_GameState == Get5State_Warmup || g_GameState == Get5State_PreVeto) &&
+        !g_DoingBackupRestoreNow) {
+      MatchTeam matchTeam = CSTeamToMatchTeam(csTeam);
+      if (IsTeamReady(matchTeam)) {
+        Format(taggedName, sizeof(taggedName), "%T %s", "ReadyTag", LANG_SERVER, name);
+      } else {
+        Format(taggedName, sizeof(taggedName), "%T %s", "NotReadyTag", LANG_SERVER, name);
+      }
     } else {
-      Format(taggedName, sizeof(taggedName), "%T %s", "NotReadyTag", LANG_SERVER, name);
+      strcopy(taggedName, sizeof(taggedName), name);
     }
   } else {
     strcopy(taggedName, sizeof(taggedName), name);
@@ -362,6 +368,8 @@ stock void FormatMapName(const char[] mapName, char[] buffer, int len, bool clea
       strcopy(buffer, len, "Nuke");
     } else if (StrEqual(buffer, "de_vertigo")) {
       strcopy(buffer, len, "Vertigo");
+    } else if (StrEqual(buffer, "de_ancient")) {
+      strcopy(buffer, len, "Ancient");
     }
   }
 }
@@ -657,12 +665,8 @@ stock bool ConvertAuthToSteam64(const char[] inputId, char outputId[AUTH_LENGTH]
 }
 
 stock bool HelpfulAttack(int attacker, int victim) {
-  if (!IsValidClient(attacker) || !IsValidClient(victim)) {
-    return false;
-  }
-  int attackerTeam = GetClientTeam(attacker);
-  int victimTeam = GetClientTeam(victim);
-  return attackerTeam != victimTeam && attacker != victim;
+  // Assumes both attacker and victim are valid clients; check this before calling this function.
+  return attacker != victim && GetClientTeam(attacker) != GetClientTeam(victim);
 }
 
 stock SideChoice SideTypeFromString(const char[] input) {
@@ -709,4 +713,31 @@ public bool DeleteFileIfExists(const char[] path) {
   }
 
   return true;
+}
+
+stock void GetPauseType(PauseType pause, char[] buffer, int len) {
+  if (pause == PauseType_Tech) {
+    Format(buffer, len, "technical");
+  } else if (pause == PauseType_Tactical) {
+    Format(buffer, len, "tactical");
+  } else {
+    Format(buffer, len, "unknown");
+  }
+}
+public bool IsJSONPath(const char[] path) {
+  int length = strlen(path);
+  if (length >= 5) {
+    return strcmp(path[length - 5], ".json", false) == 0;
+  } else {
+    return false;
+  }
+}
+
+public int GetMilliSecondsPassedSince(float timestamp) {
+  return RoundToFloor((GetEngineTime() - timestamp) * 1000);
+}
+
+// Note this value is 0-indexed for "current round" as it returns the number of rounds already played.
+public int GetRoundNumber() {
+  return GameRules_GetProp("m_totalRoundsPlayed");
 }

@@ -30,7 +30,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-int g_MatchID = -1;
 ConVar g_UseSVGCvar;
 char g_LogoBasePath[128];
 ConVar g_APIKeyCvar;
@@ -52,14 +51,14 @@ public Plugin myinfo = {
   name = "G5WS - Get5 Web Stats",
   author = "phlexplexico",
   description = "Sends match information to G5API.",
-  version = "3.0.1",
+  version = "3.1",
   url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "G5WS");
-  LogDebug("OnPluginStart version=2.1");
+  LogDebug("OnPluginStart version=3.1");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -74,12 +73,10 @@ public void OnPluginStart() {
 
   HookConVarChange(g_APIURLCvar, ApiInfoChanged);
 
-  RegConsoleCmd("get5_web_avaliable",
-                Command_Avaliable);  // legacy version since I'm bad at spelling
-  RegConsoleCmd("get5_web_available", Command_Avaliable);
+  RegConsoleCmd("get5_web_available", Command_Available);
 }
 
-public Action Command_Avaliable(int client, int args) {
+public Action Command_Available(int client, int args) {
   char versionString[64] = "unknown";
   ConVar versionCvar = FindConVar("get5_version");
   if (versionCvar != null) {
@@ -199,16 +196,8 @@ void OnDemoUploaded(HTTPStatus status, any value)
   }
 }  
 
-public void Get5_OnBackupRestore() {
-  char matchid[64];
-  Get5_GetMatchID(matchid, sizeof(matchid));
-  g_MatchID = StringToInt(matchid);
-}
 
 public void Get5_OnSeriesInit() {
-  char matchid[64];
-  Get5_GetMatchID(matchid, sizeof(matchid));
-  g_MatchID = StringToInt(matchid);
 
   // Handle new logos.
   if (!DirExists(g_LogoBasePath)) {
@@ -265,9 +254,11 @@ public void LogoCallback(HTTPStatus status, any value) {
 
 public void Get5_OnGoingLive(int mapNumber) {
   char mapName[64];
-  
   GetCurrentMap(mapName, sizeof(mapName));
-  HTTPRequest req = CreateRequest("match/%d/map/%d/start", g_MatchID, mapNumber);
+
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
+  HTTPRequest req = CreateRequest("match/%s/map/%d/start", matchId, mapNumber);
   JSONObject mtchDetail = new JSONObject();
   if (req != null) {
     mtchDetail.SetString("key", g_APIKey);
@@ -287,8 +278,10 @@ public void Get5_OnGoingLive(int mapNumber) {
 public void UpdateRoundStats(int mapNumber) {
   int team1Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team1));
   int team2Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team2));
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
 
-  HTTPRequest req = CreateRequest("match/%d/map/%d/update", g_MatchID, mapNumber);
+  HTTPRequest req = CreateRequest("match/%s/map/%d/update", matchId, mapNumber);
   JSONObject rndStat = new JSONObject();
   if (req != null) {
     rndStat.SetString("key", g_APIKey);
@@ -319,9 +312,11 @@ public void UpdateRoundStats(int mapNumber) {
 public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Score, int team2Score,
                       int mapNumber) {
   char winnerString[64];
+  char matchId[64];
   GetTeamString(mapWinner, winnerString, sizeof(winnerString));
+  Get5_GetMatchID(matchId, sizeof(matchId));
 
-  HTTPRequest req = CreateRequest("match/%d/map/%d/finish", g_MatchID, mapNumber);
+  HTTPRequest req = CreateRequest("match/%s/map/%d/finish", matchId, mapNumber);
   JSONObject mtchRes = new JSONObject();
   bool isCancelled = StrEqual(winnerString, "none", false);
   if (req != null && mapNumber > -1 && !isCancelled) {
@@ -339,6 +334,8 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
   char auth[AUTH_LENGTH];
   int clientNum;
   int mapNumber = MapNumber();
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
 
   if (kv.GotoFirstSubKey()) {
     JSONObject pStat = new JSONObject();
@@ -350,7 +347,7 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
       char teamString[16];
       GetTeamString(team, teamString, sizeof(teamString));
 
-      HTTPRequest req = CreateRequest("match/%d/map/%d/player/%s/update", g_MatchID,
+      HTTPRequest req = CreateRequest("match/%s/map/%d/player/%s/update", matchId,
                                  mapNumber, auth);
       if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
         pStat.SetString("team", teamString);
@@ -398,9 +395,12 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
 
 public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
   char teamString[64];
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(team, teamString, sizeof(teamString));
+
   LogDebug("Map Veto START team %s map vetoed %s", team, map);
-  HTTPRequest req = CreateRequest("match/%d/vetoUpdate", g_MatchID);
+  HTTPRequest req = CreateRequest("match/%s/vetoUpdate", matchId);
   JSONObject vetoData = new JSONObject();
   if (req != null) {
     vetoData.SetString("key", g_APIKey);
@@ -417,9 +417,11 @@ public void Get5_OnSidePicked(MatchTeam team, const char[] map, int side) {
   // Note: CS_TEAM_CT = 3, CS_TEAM_T = 2
   char teamString[64];
   char charSide[3];
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(team, teamString, sizeof(teamString));
   LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", side, map, team);
-  HTTPRequest req = CreateRequest("match/%d/vetoSideUpdate", g_MatchID);
+  HTTPRequest req = CreateRequest("match/%s/vetoSideUpdate", matchId);
   JSONObject vetoSideData = new JSONObject();
   if (side == CS_TEAM_CT) {
     Format(charSide, sizeof(charSide), "CT");
@@ -440,11 +442,15 @@ public void Get5_OnSidePicked(MatchTeam team, const char[] map, int side) {
 }
 
 public void Get5_OnDemoFinished(const char[] filename){
+  
   // Check if demos upload enabled, and filename is not empty.
   if (g_EnableDemoUpload.BoolValue && filename[0]) {
+    char matchId[64];
+    Get5_GetMatchID(matchId, sizeof(matchId));
+
     LogDebug("About to enter UploadDemo. SO YES WE ARE.");
     int mapNumber = MapNumber();
-    HTTPRequest req = CreateDemoRequest("match/%d/map/%d/demo", g_MatchID, mapNumber-1);
+    HTTPRequest req = CreateDemoRequest("match/%s/map/%d/demo", matchId, mapNumber-1);
     JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
     // Send demo file name to store in database to show users at end of match.
@@ -453,7 +459,7 @@ public void Get5_OnDemoFinished(const char[] filename){
       LogDebug("Our demo string: %s", filename);
       demoJSON.SetString("demoFile", filename);
       req.Post(demoJSON, RequestCallback);
-      req = CreateDemoRequest("match/%d/map/%d/demo/upload/%s", g_MatchID, mapNumber-1, g_storedAPIKey);
+      req = CreateDemoRequest("match/%s/map/%d/demo/upload/%s", matchId, mapNumber-1, g_storedAPIKey);
       if (req != null) {
         LogDebug("Uploading demo to server...");
         req.UploadFile(filename, OnDemoUploaded);
@@ -471,9 +477,11 @@ public void Get5_OnDemoFinished(const char[] filename){
 public void Get5_OnMapPicked(MatchTeam team, const char[] map){
   LogDebug("Accepted Map Pick.");
   char teamString[64];
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(team, teamString, sizeof(teamString));
   LogDebug("Map Pick START team %s map vetoed %s", team, map);
-  HTTPRequest req = CreateRequest("match/%d/vetoUpdate", g_MatchID);
+  HTTPRequest req = CreateRequest("match/%s/vetoUpdate", matchId);
   JSONObject vetoData = new JSONObject();
   if (req != null) {
     vetoData.SetString("key", g_APIKey);
@@ -488,6 +496,8 @@ public void Get5_OnMapPicked(MatchTeam team, const char[] map){
 
 public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
   char winnerString[64];
+  char matchId[64];
+  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(seriesWinner, winnerString, sizeof(winnerString));
   
   bool isCancelled = StrEqual(winnerString, "none", false);
@@ -496,7 +506,7 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
   bool forfeit = kv.GetNum(STAT_SERIES_FORFEIT, 0) != 0;
   delete kv;
 
-  HTTPRequest req = CreateRequest("match/%d/finish", g_MatchID);
+  HTTPRequest req = CreateRequest("match/%s/finish", matchId);
   JSONObject seriesRes = new JSONObject();
   // Need to check that we are indeed a best of two match as well.
   // This has been a source of double sending match results and producing errors.

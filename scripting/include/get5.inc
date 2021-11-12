@@ -34,7 +34,7 @@ enum MatchSideType {
 
 enum SideChoice {
   SideChoice_Team1CT,     // Team 1 will start on CT
-  SideChoice_Team1T,      // Team 2 will start on T
+  SideChoice_Team1T,      // Team 1 will start on T
   SideChoice_KnifeRound,  // There will be a knife round to choose sides
 };
 
@@ -80,6 +80,26 @@ forward void Get5_OnMapVetoed(MatchTeam team, const char[] map);
 // The team parameter will be MatchTeam_TeamNone if the map was selected as the last remaining map
 // and not by one of the teams specifically.
 forward void Get5_OnMapPicked(MatchTeam team, const char[] map);
+
+// Called when a player is elected the MVP of the round.
+forward void Get5_OnPlayerBecameMVP(int mapNumber, int roundNumber, int client, int clientSide, int reason);
+
+// Called when a player dies in a match, including from suicide and team kills. roundTime is milliseconds.
+forward void Get5_OnPlayerDeath(char[] weapon, bool headshot, int mapNumber, int roundNumber, int roundTime,
+  int attacker, int victim, bool suicide, int assister, bool flashAssist, int penetratedObjects, bool thruSmoke,
+  bool noScope, bool attackerBlind, int attackerSide, int assisterSide, int victimSide);
+
+// Called when a round starts.
+forward void Get5_OnRoundStart(int mapNumber, int roundNumber);
+
+// Called when the round ends. roundLength is milliseconds.
+forward void Get5_OnRoundEnd(int winnerSide, char[] winningTeam, int mapNumber, int roundNumber, int roundLength, int reason);
+
+// Called when the bomb is defused. roundTime is milliseconds.
+forward void Get5_OnBombDefused(int client, int site, int mapNumber, int roundNumber, int roundTime, int milliSecondsRemaining);
+
+// Called when the bomb is planted. roundTime is milliseconds.
+forward void Get5_OnBombPlanted(int client, int site, int mapNumber, int roundNumber, int roundTime);
 
 // Called when a team selects a side.
 forward void Get5_OnSidePicked(MatchTeam team, const char[] map, int side);
