@@ -77,6 +77,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
           commit: "${{ github.sha }}"
           tag: "Nightly-${{ steps.vars.outputs.sha_short }}"
