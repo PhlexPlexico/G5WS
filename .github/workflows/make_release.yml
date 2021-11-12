@@ -74,8 +74,6 @@ jobs:
       - name: Create a Release
         id: create_release
         uses: ncipollo/release-action@v1.8.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
