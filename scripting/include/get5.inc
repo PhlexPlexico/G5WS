@@ -34,8 +34,13 @@ enum MatchSideType {
 
 enum SideChoice {
   SideChoice_Team1CT,     // Team 1 will start on CT
-  SideChoice_Team1T,      // Team 2 will start on T
+  SideChoice_Team1T,      // Team 1 will start on T
   SideChoice_KnifeRound,  // There will be a knife round to choose sides
+};
+
+enum PauseType {
+  PauseType_Tech,      // Technical pause
+  PauseType_Tactical,  // Tactical Pause
 };
 
 // Called each get5-event with JSON formatted event text.
@@ -76,11 +81,37 @@ forward void Get5_OnMapVetoed(MatchTeam team, const char[] map);
 // and not by one of the teams specifically.
 forward void Get5_OnMapPicked(MatchTeam team, const char[] map);
 
+// Called when a player is elected the MVP of the round.
+forward void Get5_OnPlayerBecameMVP(int mapNumber, int roundNumber, int client, int clientSide, int reason);
+
+// Called when a player dies in a match, including from suicide and team kills. roundTime is milliseconds.
+forward void Get5_OnPlayerDeath(char[] weapon, bool headshot, int mapNumber, int roundNumber, int roundTime,
+  int attacker, int victim, bool suicide, int assister, bool flashAssist, int penetratedObjects, bool thruSmoke,
+  bool noScope, bool attackerBlind, int attackerSide, int assisterSide, int victimSide);
+
+// Called when a round starts.
+forward void Get5_OnRoundStart(int mapNumber, int roundNumber);
+
+// Called when the round ends. roundLength is milliseconds.
+forward void Get5_OnRoundEnd(int winnerSide, char[] winningTeam, int mapNumber, int roundNumber, int roundLength, int reason);
+
+// Called when the bomb is defused. roundTime is milliseconds.
+forward void Get5_OnBombDefused(int client, int site, int mapNumber, int roundNumber, int roundTime, int milliSecondsRemaining);
+
+// Called when the bomb is planted. roundTime is milliseconds.
+forward void Get5_OnBombPlanted(int client, int site, int mapNumber, int roundNumber, int roundTime);
+
 // Called when a team selects a side.
 forward void Get5_OnSidePicked(MatchTeam team, const char[] map, int side);
 
 // Called when a demo finishes recording.
 forward void Get5_OnDemoFinished(const char[] filename);
+
+// Called when a match is paused.
+forward void Get5_OnMatchPaused(MatchTeam team, PauseType pauseReason);
+
+// Called when a match is unpaused.
+forward void Get5_OnMatchUnpaused(MatchTeam team);
 
 // Called when a match backup is restored.
 forward void Get5_OnBackupRestore();
@@ -135,6 +166,9 @@ native void Get5_GetMatchID(char[] id, int length);
 
 // Sets the current matchid.
 native void Get5_SetMatchID(const char[] id);
+
+// Returns the server ID as defined by get5_server_id.
+native int Get5_GetServerID();
 
 // Adds a cvar to be set when going live. If the cvar is already in the cvars for the match, the new
 // value will replace the old value if the override parameter is true.
@@ -202,7 +236,8 @@ native int Get5_IncreasePlayerStat(int client, const char[] statName, int amount
 #define STAT_MVP "mvp"
 
 public SharedPlugin __pl_get5 = {
-    name = "get5", file = "get5.smx",
+    name = "get5",
+    file = "get5.smx",
 #if defined REQUIRE_PLUGIN
     required = 1,
 #else
@@ -227,6 +262,7 @@ public __pl_get5_SetNTVOptional() {
   MarkNativeAsOptional("Get5_GetTeamScores");
   MarkNativeAsOptional("Get5_GetMatchID");
   MarkNativeAsOptional("Get5_SetMatchID");
+  MarkNativeAsOptional("Get5_GetServerID");
   MarkNativeAsOptional("Get5_AddLiveCvar");
   MarkNativeAsOptional("Get5_IncreasePlayerStat");
   MarkNativeAsOptional("Get5_GetMatchStats");
