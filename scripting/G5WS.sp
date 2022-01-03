@@ -252,12 +252,10 @@ public void LogoCallback(HTTPStatus status, any value) {
   return;
 }
 
-public void Get5_OnGoingLive(int mapNumber) {
+public void Get5_OnGoingLive(char[] matchId, int mapNumber) {
   char mapName[64];
   GetCurrentMap(mapName, sizeof(mapName));
 
-  char matchId[64];
-  Get5_GetMatchID(matchId, sizeof(matchId));
   HTTPRequest req = CreateRequest("match/%s/map/%d/start", matchId, mapNumber);
   JSONObject mtchDetail = new JSONObject();
   if (req != null) {
@@ -275,11 +273,9 @@ public void Get5_OnGoingLive(int mapNumber) {
   delete mtchDetail;
 }
 
-public void UpdateRoundStats(int mapNumber) {
+public void UpdateRoundStats(char[] matchId, int mapNumber) {
   int team1Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team1));
   int team2Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team2));
-  char matchId[64];
-  Get5_GetMatchID(matchId, sizeof(matchId));
 
   HTTPRequest req = CreateRequest("match/%s/map/%d/update", matchId, mapNumber);
   JSONObject rndStat = new JSONObject();
@@ -309,12 +305,10 @@ public void UpdateRoundStats(int mapNumber) {
   delete rndStat;
 }
 
-public void Get5_OnMapResult(const char[] map, MatchTeam mapWinner, int team1Score, int team2Score,
+public void Get5_OnMapResult(char[] matchId, const char[] map, MatchTeam mapWinner, int team1Score, int team2Score,
                       int mapNumber) {
   char winnerString[64];
-  char matchId[64];
   GetTeamString(mapWinner, winnerString, sizeof(winnerString));
-  Get5_GetMatchID(matchId, sizeof(matchId));
 
   HTTPRequest req = CreateRequest("match/%s/map/%d/finish", matchId, mapNumber);
   JSONObject mtchRes = new JSONObject();
@@ -393,10 +387,8 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
   } 
 }
 
-public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
+public void Get5_OnMapVetoed(char[] matchId, MatchTeam team, const char[] map){
   char teamString[64];
-  char matchId[64];
-  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(team, teamString, sizeof(teamString));
 
   LogDebug("Map Veto START team %s map vetoed %s", team, map);
@@ -413,12 +405,10 @@ public void Get5_OnMapVetoed(MatchTeam team, const char[] map){
   delete vetoData;
 }
 
-public void Get5_OnSidePicked(MatchTeam team, const char[] map, int side) {
+public void Get5_OnSidePicked(char[] matchId, MatchTeam team, const char[] map, int side) {
   // Note: CS_TEAM_CT = 3, CS_TEAM_T = 2
   char teamString[64];
   char charSide[3];
-  char matchId[64];
-  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(team, teamString, sizeof(teamString));
   LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", side, map, team);
   HTTPRequest req = CreateRequest("match/%s/vetoSideUpdate", matchId);
@@ -441,14 +431,11 @@ public void Get5_OnSidePicked(MatchTeam team, const char[] map, int side) {
   delete vetoSideData;
 }
 
-public void Get5_OnDemoFinished(const char[] filename){
+public void Get5_OnDemoFinished(char[] matchId, const char[] filename){
   
   // Check if demos upload enabled, and filename is not empty.
   if (g_EnableDemoUpload.BoolValue && filename[0]) {
-    char matchId[64];
-    Get5_GetMatchID(matchId, sizeof(matchId));
-
-    LogDebug("About to enter UploadDemo. SO YES WE ARE.");
+    LogDebug("About to enter UploadDemo. SO YES WE ARE. Our match ID is %s", matchId);
     int mapNumber = MapNumber();
     HTTPRequest req = CreateDemoRequest("match/%s/map/%d/demo", matchId, mapNumber-1);
     JSONObject demoJSON = new JSONObject();
@@ -474,11 +461,9 @@ public void Get5_OnDemoFinished(const char[] filename){
   }
 }
 
-public void Get5_OnMapPicked(MatchTeam team, const char[] map){
+public void Get5_OnMapPicked(char[] matchId, MatchTeam team, const char[] map){
   LogDebug("Accepted Map Pick.");
   char teamString[64];
-  char matchId[64];
-  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(team, teamString, sizeof(teamString));
   LogDebug("Map Pick START team %s map vetoed %s", team, map);
   HTTPRequest req = CreateRequest("match/%s/vetoUpdate", matchId);
@@ -494,10 +479,8 @@ public void Get5_OnMapPicked(MatchTeam team, const char[] map){
   delete vetoData;
 }
 
-public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
+public void Get5_OnSeriesResult(char[] matchId, MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
   char winnerString[64];
-  char matchId[64];
-  Get5_GetMatchID(matchId, sizeof(matchId));
   GetTeamString(seriesWinner, winnerString, sizeof(winnerString));
   
   bool isCancelled = StrEqual(winnerString, "none", false);
