@@ -252,7 +252,7 @@ public void LogoCallback(HTTPStatus status, any value) {
   return;
 }
 
-public void Get5_OnGoingLive(char[] matchId, int mapNumber) {
+public void Get5_OnGoingLive(const char[] matchId, int mapNumber) {
   char mapName[64];
   GetCurrentMap(mapName, sizeof(mapName));
 
@@ -273,7 +273,7 @@ public void Get5_OnGoingLive(char[] matchId, int mapNumber) {
   delete mtchDetail;
 }
 
-public void UpdateRoundStats(char[] matchId, int mapNumber) {
+public void UpdateRoundStats(const char[] matchId, int mapNumber) {
   int team1Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team1));
   int team2Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team2));
 
@@ -305,7 +305,7 @@ public void UpdateRoundStats(char[] matchId, int mapNumber) {
   delete rndStat;
 }
 
-public void Get5_OnMapResult(char[] matchId, const char[] map, MatchTeam mapWinner, int team1Score, int team2Score,
+public void Get5_OnMapResult(const char[] matchId, const char[] map, MatchTeam mapWinner, int team1Score, int team2Score,
                       int mapNumber) {
   char winnerString[64];
   GetTeamString(mapWinner, winnerString, sizeof(winnerString));
@@ -387,7 +387,7 @@ public void UpdatePlayerStats(KeyValues kv, MatchTeam team) {
   } 
 }
 
-public void Get5_OnMapVetoed(char[] matchId, MatchTeam team, const char[] map){
+public void Get5_OnMapVetoed(const char[] matchId, MatchTeam team, const char[] map){
   char teamString[64];
   GetTeamString(team, teamString, sizeof(teamString));
 
@@ -405,7 +405,7 @@ public void Get5_OnMapVetoed(char[] matchId, MatchTeam team, const char[] map){
   delete vetoData;
 }
 
-public void Get5_OnSidePicked(char[] matchId, MatchTeam team, const char[] map, int side) {
+public void Get5_OnSidePicked(const char[] matchId, MatchTeam team, const char[] map, int side) {
   // Note: CS_TEAM_CT = 3, CS_TEAM_T = 2
   char teamString[64];
   char charSide[3];
@@ -431,7 +431,7 @@ public void Get5_OnSidePicked(char[] matchId, MatchTeam team, const char[] map, 
   delete vetoSideData;
 }
 
-public void Get5_OnDemoFinished(char[] matchId, const char[] filename){
+public void Get5_OnDemoFinished(const char[] matchId, const char[] filename){
   
   // Check if demos upload enabled, and filename is not empty.
   if (g_EnableDemoUpload.BoolValue && filename[0]) {
@@ -461,7 +461,7 @@ public void Get5_OnDemoFinished(char[] matchId, const char[] filename){
   }
 }
 
-public void Get5_OnMapPicked(char[] matchId, MatchTeam team, const char[] map){
+public void Get5_OnMapPicked(const char[] matchId, MatchTeam team, const char[] map){
   LogDebug("Accepted Map Pick.");
   char teamString[64];
   GetTeamString(team, teamString, sizeof(teamString));
@@ -479,7 +479,7 @@ public void Get5_OnMapPicked(char[] matchId, MatchTeam team, const char[] map){
   delete vetoData;
 }
 
-public void Get5_OnSeriesResult(char[] matchId, MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
+public void Get5_OnSeriesResult(const char[] matchId, MatchTeam seriesWinner, int team1MapScore, int team2MapScore) {
   char winnerString[64];
   GetTeamString(seriesWinner, winnerString, sizeof(winnerString));
   
