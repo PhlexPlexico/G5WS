@@ -16,7 +16,6 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -36,6 +35,9 @@ jobs:
 
           init_submodule() {
             git submodule update --init
+            cd get5
+            git submodule update --init
+            cd ../
           }
           
           create_temp_directory() {
@@ -54,6 +56,7 @@ jobs:
               cp -r ../scripting/* ./addons/sourcemod/scripting/
               cp -r ../translations/* ./addons/sourcemod/translations/
               cp -f ../get5/scripting/include/get5.inc ./addons/sourcemod/scripting/include/get5.inc
+              cp -r ../get5/dependencies/sm-json/addons/sourcemod/scripting/include/* ./addons/sourcemod/scripting/include/
           }
 
           compile() {
