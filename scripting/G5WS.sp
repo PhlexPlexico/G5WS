@@ -240,7 +240,7 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
   char matchId[64];
   event.GetMatchId(matchId, sizeof(matchId));
 
-  HTTPRequest req = CreateRequest("match/%s/map/%d/start", matchId, event.mapNumber);
+  HTTPRequest req = CreateRequest("match/%s/map/%d/start", matchId, event.MapNumber);
   JSONObject mtchDetail = new JSONObject();
   if (req != null) {
     mtchDetail.SetString("key", g_APIKey);
@@ -294,15 +294,15 @@ public void Get5_OnMapResult(const Get5MapResultEvent event) {
   char winnerString[64];
   
   event.GetMatchId(matchId, sizeof(matchId));
-  GetTeamString(mapWinner, winnerString, sizeof(winnerString));
+  GetTeamString(event.Winner, winnerString, sizeof(winnerString));
 
-  HTTPRequest req = CreateRequest("match/%s/map/%d/finish", matchId, mapNumber);
+  HTTPRequest req = CreateRequest("match/%s/map/%d/finish", matchId, event.MapNumber);
   JSONObject mtchRes = new JSONObject();
   bool isCancelled = StrEqual(winnerString, "none", false);
-  if (req != null && mapNumber > -1 && !isCancelled) {
+  if (req != null && event.MapNumber > -1 && !isCancelled) {
     mtchRes.SetString("key", g_APIKey);
-    mtchRes.SetInt("team1score", team1Score);
-    mtchRes.SetInt("team2score", team2Score);
+    mtchRes.SetInt("team1score", event.Team1Score);
+    mtchRes.SetInt("team2score", event.Team2Score);
     mtchRes.SetString("winner", winnerString);
     req.Post(mtchRes, RequestCallback);
   }
@@ -377,9 +377,9 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   char mapName[64];
   event.GetMatchId(matchId, sizeof(matchId));
   event.GetMapName(mapName, sizeof(mapName));
-  GetTeamString(team, teamString, sizeof(teamString));
+  GetTeamString(event.Team, teamString, sizeof(teamString));
 
-  LogDebug("Map Veto START team %s map vetoed %s", team, map);
+  LogDebug("Map Veto START team %s map vetoed %s", event.Team, mapName);
   HTTPRequest req = CreateRequest("match/%s/vetoUpdate", matchId);
   JSONObject vetoData = new JSONObject();
   if (req != null) {
@@ -402,12 +402,12 @@ public void Get5_OnSidePicked(const Get5SidePickedEvent event) {
   event.GetMatchId(matchId, sizeof(matchId));
   event.GetMapName(mapName, sizeof(mapName));
   GetTeamString(event.Team, teamString, sizeof(teamString));
-  LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", event.Side, mapName, team);
+  LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", event.Side, mapName, event.Team);
   HTTPRequest req = CreateRequest("match/%s/vetoSideUpdate", matchId);
   JSONObject vetoSideData = new JSONObject();
-  if (event.Side == CS_TEAM_CT) {
+  if (event.Side == Counter_Terrorists) {
     Format(charSide, sizeof(charSide), "CT");
-  } else if (event.Side == CS_TEAM_T) {
+  } else if (event.Side == Terrorists) {
     Format(charSide, sizeof(charSide), "T");
   } else {
     Format(charSide, sizeof(charSide), "UNK");
@@ -464,8 +464,8 @@ public void Get5_OnMapPicked(const Get5MapPickedEvent event){
 
   event.GetMatchId(matchId, sizeof(matchId));
   event.GetMapName(mapName, sizeof(mapName));
-  GetTeamString(team, teamString, sizeof(teamString));
-  LogDebug("Map Pick START team %s map vetoed %s", team, mapName);
+  GetTeamString(event.Team, teamString, sizeof(teamString));
+  LogDebug("Map Pick START team %s map vetoed %s", event.Team, mapName);
   HTTPRequest req = CreateRequest("match/%s/vetoUpdate", matchId);
   JSONObject vetoData = new JSONObject();
   if (req != null) {
@@ -497,11 +497,11 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
   // Need to check that we are indeed a best of two match as well.
   // This has been a source of double sending match results and producing errors.
   // So we really need to check if we are in an edge case BO2 where a score is 1-1.
-  if (req != null && (team1MapScore == team2MapScore || !isCancelled)) {
+  if (req != null && (event.Team1Score == event.Team2Score || !isCancelled)) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
-    seriesRes.SetInt("team1score", event.Team1Score.get());
-    seriesRes.SetInt("team2score", event.Team2Score.get());
+    seriesRes.SetInt("team1score", event.Team1Score);
+    seriesRes.SetInt("team2score", event.Team2Score);
     seriesRes.SetInt("forfeit", forfeit);
     req.Post(seriesRes, RequestCallback);
   }
