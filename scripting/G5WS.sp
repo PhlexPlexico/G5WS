@@ -535,3 +535,34 @@ public void Get5_OnRoundStatsUpdated(const Get5RoundStatsUpdatedEvent event) {
     UpdateRoundStats(matchId, Get5_GetMapNumber());
   }
 }
+
+public void Get5_OnMatchPaused(const Get5MatchPausedEvent event) {
+  char matchId[64];
+  event.GetMatchId(matchId, sizeof(matchId));
+
+  HTTPRequest req = CreateRequest("match/%s/pause", matchId);
+  JSONObject matchPause = new JSONObject();
+
+  if (req != null) {
+    matchPause.SetString("key", g_APIKey);
+    matchPause.SetString("pause_type", event.PauseType);
+    matchPause.SetString("team_paused", event.Team);
+    req.Post(matchPause, RequestCallback);
+  }
+  delete matchPause;
+}
+
+public void Get5_OnMatchUnpaused(const Get5MatchUnpausedEvent event) {
+  char matchId[64];
+  event.GetMatchId(matchId, sizeof(matchId));
+
+  HTTPRequest req = CreateRequest("match/%s/unpause", matchId);
+  JSONObject matchUnpause = new JSONObject();
+
+  if (req != null) {
+    matchUnpause.SetString("key", g_APIKey);
+    matchUnpause.SetString("team_unpaused", event.Team);
+    req.Post(matchUnpause, RequestCallback);
+  }
+  delete matchUnpause;
+}
