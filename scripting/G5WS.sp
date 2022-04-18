@@ -165,7 +165,7 @@ static HTTPRequest CreateDemoRequest(const char[] apiMethod, any:...) {
     // Not using a web interface.
     return null;
   }
-  
+
   Format(url, sizeof(url), "%s%s", g_storedAPIURL, apiMethod);
   LogDebug("Our URL is: %s", url);
   char formattedUrl[1024];
@@ -199,7 +199,6 @@ void OnDemoUploaded(HTTPStatus status, any value)
       return;
   }
 }  
-
 
 public void Get5_OnSeriesInit(const Get5SeriesStartedEvent event) {
 
@@ -393,6 +392,27 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, MatchTeam team
     delete pStat;
   } 
 }
+
+// New Feat: Add in additional info on what killed a user.
+/*public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+  char matchId[64];
+  char steamId[64];
+  int mapNumber = Get5_GetMapNumber();
+  int clientNum;
+  event.attacker.GetSteamId(steamId, sizeof(steamId));
+
+  event.GetMatchId(matchId, sizeof(matchId));
+  JSONObject advancedStats = new JSONObject();
+  clientNum = AuthToClient(steamId);
+
+  HTTPRequest req = CreateRequest("match/%s/map/%d/player/%s/extras/update", matchId,
+                                 mapNumber, steamId);
+  if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
+    // TODO: Add in new stats to JSON object.
+    req.Post(advancedStats, RequestCallback);
+  }
+  delete advancedStats;
+}*/
 
 public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   char matchId[64];
