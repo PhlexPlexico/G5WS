@@ -159,6 +159,13 @@ static HTTPRequest CreateCustomRequest(const char[] oldUrl, any:...) {
 
 static HTTPRequest CreateDemoRequest(const char[] apiMethod, any:...) {
   char url[1024];
+
+  // Check here to avoid leaks from not deleteing req handle.
+  if (StrEqual(g_storedAPIKey, "")) {
+    // Not using a web interface.
+    return null;
+  }
+  
   Format(url, sizeof(url), "%s%s", g_storedAPIURL, apiMethod);
   LogDebug("Our URL is: %s", url);
   char formattedUrl[1024];
@@ -167,10 +174,7 @@ static HTTPRequest CreateDemoRequest(const char[] apiMethod, any:...) {
   LogDebug("Trying to create request to url %s", formattedUrl);
 
   HTTPRequest req = new HTTPRequest(formattedUrl);
-  if (StrEqual(g_storedAPIKey, "")) {
-    // Not using a web interface.
-    return null;
-  } else if (req == INVALID_HANDLE) {
+  if (req == INVALID_HANDLE) {
     LogError("Failed to create request to %s", formattedUrl);
     return null;
   } else {
