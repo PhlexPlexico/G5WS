@@ -393,26 +393,79 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, MatchTeam team
   } 
 }
 
-// New Feat: Add in additional info on what killed a user.
-/*public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+// New Feat: Add in additional info on what killed a user. To be used with sockets?
+public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
   char matchId[64];
-  char steamId[64];
+  char attackerSteamId[AUTH_LENGTH];
+  char attackerName[MAX_NAME_LENGTH];
+  char victimSteamId[AUTH_LENGTH];
+  char victimName[MAX_NAME_LENGTH];
+  char assisterSteamId[AUTH_LENGTH];
+  char assisterName[MAX_NAME_LENGTH];
+  char weaponName[MAX_NAME_LENGTH];
   int mapNumber = Get5_GetMapNumber();
   int clientNum;
-  event.attacker.GetSteamId(steamId, sizeof(steamId));
+  Get5AssisterObject possibleAssister;
+
+  event.Attacker.GetSteamId(attackerSteamId, sizeof(attackerSteamId));
+  event.Player.GetSteamId(victimSteamId, sizeof(victimSteamId));
+  if (event.HasAssist()) {
+    possibleAssister = event.Assist;
+    possibleAssister.Player.GetSteamId(assisterSteamId, sizeof(assisterSteamId));
+  }
+  // Collect names to avoid contacting Steam on API side.
+  KeyValues kv = new KeyValues("Stats");
+  Get5_GetMatchStats(kv);
+  char mapKey[32];
+  Format(mapKey, sizeof(mapKey), "map%d", mapNumber);
+  kv.JumpToKey(mapKey);
+  if (kv.GotoFirstSubKey()) {
+    kv.JumpToKey(attackerSteamId);
+    kv.GetString("name", attackerName, sizeof(attackerName));
+    kv.GoBack();
+    kv.JumpToKey(victimSteamId);
+    kv.GetString("name", victimName, sizeof(victimName));
+    kv.GoBack();
+    if (event.HasAssist()) {
+      kv.JumpToKey(assisterSteamId);
+      kv.GetString("name", assisterName, sizeof(assisterName));
+    }
+  }
+  delete kv;
 
   event.GetMatchId(matchId, sizeof(matchId));
   JSONObject advancedStats = new JSONObject();
-  clientNum = AuthToClient(steamId);
+  clientNum = AuthToClient(attackerSteamId);
 
   HTTPRequest req = CreateRequest("match/%s/map/%d/player/%s/extras/update", matchId,
-                                 mapNumber, steamId);
+                                 mapNumber, attackerSteamId);
   if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
-    // TODO: Add in new stats to JSON object.
+    event.GetWeapon(weaponName, sizeof(weaponName));
+    advancedStats.SetString("key", g_APIKey);
+    advancedStats.SetInt("mapNumber", mapNumber);
+    advancedStats.SetString("attackerSteamId", attackerSteamId);
+    advancedStats.SetString("attackerName", attackerName);
+    advancedStats.SetString("victimSteamId", victimSteamId);
+    advancedStats.SetString("victimName", victimName);
+    advancedStats.SetInt("roundTime", event.RoundTime);
+    advancedStats.SetString("weaponUsed", weaponName);
+    advancedStats.SetBool("isHeadshot", event.Headshot);
+    advancedStats.SetBool("isFriendlyFire", event.FriendlyFire);
+    advancedStats.SetBool("isThruSmoke", event.ThruSmoke);
+    advancedStats.SetBool("isNoScope", event.NoScope);
+    advancedStats.SetBool("isAttackerBlind", event.AttackerBlind);
+    advancedStats.SetBool("isSuicide", event.Suicide);
+    advancedStats.SetInt("isPenetrated", event.Penetrated);
+    if (event.HasAssist()) {
+      advancedStats.SetString("assistedByName", assisterName);
+      advancedStats.SetString("assistedBySteamId", assisterSteamId);
+      advancedStats.SetBool("isAssistedByFriendlyFire", possibleAssister.FriendlyFire);
+      advancedStats.SetBool("isAssistedByFlash", possibleAssister.FlashAssist);
+    }
     req.Post(advancedStats, RequestCallback);
   }
   delete advancedStats;
-}*/
+}
 
 public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   char matchId[64];
@@ -421,7 +474,7 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   event.GetMatchId(matchId, sizeof(matchId));
   event.GetMapName(mapName, sizeof(mapName));
   GetTeamString(event.Team, teamString, sizeof(teamString));
-
+  
   LogDebug("Map Veto START team %s map vetoed %s", event.Team, mapName);
   HTTPRequest req = CreateRequest("match/%s/vetoUpdate", matchId);
   JSONObject vetoData = new JSONObject();

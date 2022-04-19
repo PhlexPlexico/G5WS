@@ -3,3 +3,7 @@
 *.tar.gz
 builds
 compile.sh
+.vscode/*
+# Submodule, so let's ignore if we forget to remove.
+scripting/include/get5.inc
+build.sh
