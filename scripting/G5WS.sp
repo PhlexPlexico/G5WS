@@ -75,8 +75,8 @@ public void OnPluginStart() {
 
   RegConsoleCmd("get5_web_available", Command_Available);
 
-  // RegAdminCmd("get5_loadbackup_url", Command_LoadBackupUrl, ADMFLAG_CHANGEMAP,
-  //             "Loads a get5 match backup from a URL.");
+  //RegAdminCmd("get5_loadbackup_url", Command_LoadBackupUrl, ADMFLAG_CHANGEMAP,
+  //           "Loads a get5 match backup from a URL.");
 }
 
 public Action Command_Available(int client, int args) {
@@ -108,7 +108,6 @@ public void LogoBasePathChanged(ConVar convar, const char[] oldValue, const char
 public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
   g_APIKeyCvar.GetString(g_APIKey, sizeof(g_APIKey));
   g_APIURLCvar.GetString(g_APIURL, sizeof(g_APIURL));
-
   // Add a trailing backslash to the api url if one is missing.
   int len = strlen(g_APIURL);
   if (len > 0 && g_APIURL[len - 1] != '/') {
@@ -160,9 +159,6 @@ static HTTPRequest CreateCustomRequest(const char[] oldUrl, any:...) {
 }
 
 
-static HTTPRequest CreateDemoRequest(const char[] apiMethod, any:...) {
-  char url[1024];
-
   // Check here to avoid leaks from not deleteing req handle.
   if (StrEqual(g_storedAPIKey, "")) {
     // Not using a web interface.
@@ -195,7 +191,7 @@ public void RequestCallback(HTTPResponse response, any value) {
     } 
 }
 
-void OnFileUploadedDownloaded(HTTPStatus status, any value)
+void OnDemoUploaded(HTTPStatus status, any value)
 {
   if (status != HTTPStatus_OK) {
       LogError("[ERR] Demo request failed, HTTP status code: %d", status);
@@ -397,7 +393,7 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, MatchTeam team
 }
 
 // New Feat: Add in additional info on what killed a user. To be used with sockets?
-/*public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
   char matchId[64];
   char attackerSteamId[AUTH_LENGTH];
   char attackerName[MAX_NAME_LENGTH];
@@ -468,7 +464,7 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, MatchTeam team
     req.Post(advancedStats, RequestCallback);
   }
   delete advancedStats;
-}*/
+}
 
 public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   char matchId[64];
@@ -543,7 +539,7 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
       req = CreateDemoRequest("match/%s/map/%d/demo/upload/%s", matchId, mapNumber-1, g_storedAPIKey);
       if (req != null) {
         LogDebug("Uploading demo to server...");
-        req.UploadFile(filename, OnFileUploadedDownloaded);
+        req.UploadFile(filename, OnDemoUploaded);
         LogDebug("COMPLETE!");
       }
     }
@@ -654,19 +650,20 @@ public void Get5_OnMatchUnpaused(const Get5MatchUnpausedEvent event) {
   delete matchUnpause;
 }
 
-/*public Action Command_LoadBackupUrl(int client, int args) {
+/*
+public Action Command_LoadBackupUrl(int client, int args) {
   bool ripExtAvailable = LibraryExists("ripext");
 
   if (!ripExtAvailable) {
     ReplyToCommand(client,
-                   "Cannot load matches from a url without the SteamWorks extension running");
+                   "Cannot load matches from a url without the Rest in PAWN extension running");
   } else {
     char arg[PLATFORM_MAX_PATH];
     if (args >= 1 && GetCmdArgString(arg, sizeof(arg))) {
       if (!LoadBackupFromUrl(arg)) {
         ReplyToCommand(client, "Failed to load match backup.");
       } else {
-        ReplyToCommand(client, "Match restored on new server.");
+        return;
       }
     } else {
       ReplyToCommand(client, "Usage: get5_loadbackup_url <url>");
@@ -684,7 +681,7 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     Format(backupFile, sizeof(backupFile), "get5_backup_match%s_map%d_round%d.cfg", matchId,
            event.MapNumber, event.RoundNumber);
     LogDebug("Uploading backup %s to server.");
-    req.UploadFile(backupFile, OnFileUploadedDownloaded);
+    req.UploadFile(backupFile, LogoCallback);
     LogDebug("COMPLETE!");
   }
   return;
@@ -695,14 +692,26 @@ stock bool LoadBackupFromUrl(const char[] url) {
   char configPath[PLATFORM_MAX_PATH];
   strcopy(cleanedUrl, sizeof(cleanedUrl), url);
   ReplaceString(cleanedUrl, sizeof(cleanedUrl), "\"", "");
-  BuildPath(Path_SM, configPath, sizeof(configPath), "configs/get5/match_restore_remote.cfg"); 
-
-  HTTPRequest req = CreateRequest(cleanedUrl);
-  if (req == null) {
+  Format(configPath, sizeof(configPath), "match_restore_remote.cfg"); 
+  HTTPRequest req = CreateCustomRequest(cleanedUrl);
+  if (req == INVALID_HANDLE) {
     return false;
   } else {
-    req.DownloadFile(configPath, OnFileUploadedDownloaded);
+    req.DownloadFile(configPath, LogoCallback);
+    // Set API key. This is used as preround start does not have it set yet.
+    KeyValues kv = new KeyValues("Backup");
+    if (!kv.ImportFromFile(configPath)) {
+      LogError("Failed to find read backup file \"%s\"", configPath);
+      delete kv;
+      return false;
+    }
+    if (kv.JumpToKey("Match")) { 
+      if (kv.JumpToKey("cvars")) { 
+        kv.GetString("get5_web_api_key", g_APIURL, sizeof(g_APIURL));
+      }
+    }
+    delete kv;
+    ServerCommand("get5_loadbackup %s", configPath);
+    return true;
   }
-  ServerCommand("get5_loadbackup %s", "configs/get5/match_restore_remote.cfg");
-  return true;
 }*/
