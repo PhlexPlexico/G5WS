@@ -141,6 +141,25 @@ static HTTPRequest CreateRequest(const char[] apiMethod, any:...) {
   }
 }
 
+static HTTPRequest CreateCustomRequest(const char[] oldUrl, any:...) {
+  char url[1024];
+  Format(url, sizeof(url), "%s", oldUrl);
+  LogDebug("Our URL is: %s", url);
+  char formattedUrl[1024];
+  VFormat(formattedUrl, sizeof(formattedUrl), url, 2);
+
+  LogDebug("Trying to create request to url %s", formattedUrl);
+
+  HTTPRequest req = new HTTPRequest(formattedUrl);
+  if (req == INVALID_HANDLE) {
+    LogError("Failed to create request to %s", formattedUrl);
+    return null;
+  } else {
+    return req;
+  }
+}
+
+
 static HTTPRequest CreateDemoRequest(const char[] apiMethod, any:...) {
   char url[1024];
   Format(url, sizeof(url), "%s%s", g_storedAPIURL, apiMethod);
@@ -507,4 +526,90 @@ static int MapNumber() {
   Get5_GetTeamScores(MatchTeam_Team2, t2, buf);
   Get5_GetTeamScores(MatchTeam_TeamNone, n, buf);
   return t1 + t2 + n;
+}
+
+public void Get5_OnMatchPaused(MatchTeam team, PauseType pauseReason) {
+  char teamString[64];
+  char pauseType[4];
+
+  GetTeamString(team, teamString, sizeof(teamString));
+  if (pauseReason == PauseType_Tactical) {
+    Format(pauseType, sizeof(pauseType), "Tact");
+  } else if (pauseReason == PauseType_Tech) {
+    Format(pauseType, sizeof(pauseType), "Tech");
+  }
+  HTTPRequest req = CreateRequest("match/%d/pause", g_MatchID);
+  JSONObject matchPause = new JSONObject();
+  if (req != null) {
+    matchPause.SetString("key", g_APIKey);
+    matchPause.SetString("pause_type", pauseType);
+    matchPause.SetString("team_paused", teamString);
+    req.Post(matchPause, RequestCallback);
+  }
+  delete matchPause;
+}
+
+public void Get5_OnMatchUnpaused(MatchTeam team) {
+  char teamString[64];
+
+  HTTPRequest req = CreateRequest("match/%d/unpause", g_MatchID);
+  JSONObject matchUnpause = new JSONObject();
+  GetTeamString(team, teamString, sizeof(teamString));
+
+  if (req != null) {
+    matchUnpause.SetString("key", g_APIKey);
+    matchUnpause.SetString("team_unpaused", teamString);
+    req.Post(matchUnpause, RequestCallback);
+  }
+  delete matchUnpause;
+}
+
+
+public Action Command_LoadBackupUrl(int client, int args) {
+  bool ripExtAvailable = LibraryExists("ripext");
+
+  if (!ripExtAvailable) {
+    ReplyToCommand(client,
+                   "Cannot load matches from a url without the Rest in PAWN extension running");
+  } else {
+    char arg[PLATFORM_MAX_PATH];
+    if (args >= 1 && GetCmdArgString(arg, sizeof(arg))) {
+      if (!LoadBackupFromUrl(arg)) {
+        ReplyToCommand(client, "Failed to load match backup.");
+      } else {
+        return;
+      }
+    } else {
+      ReplyToCommand(client, "Usage: get5_loadbackup_url <url>");
+    }
+  }
+}
+
+stock bool LoadBackupFromUrl(const char[] url) {
+  char cleanedUrl[1024];
+  char configPath[PLATFORM_MAX_PATH];
+  strcopy(cleanedUrl, sizeof(cleanedUrl), url);
+  ReplaceString(cleanedUrl, sizeof(cleanedUrl), "\"", "");
+  Format(configPath, sizeof(configPath), "match_restore_remote.cfg"); 
+  HTTPRequest req = CreateCustomRequest(cleanedUrl);
+  if (req == INVALID_HANDLE) {
+    return false;
+  } else {
+    req.DownloadFile(configPath, LogoCallback);
+    // Set API key. This is used as preround start does not have it set yet.
+    KeyValues kv = new KeyValues("Backup");
+    if (!kv.ImportFromFile(configPath)) {
+      LogError("Failed to find read backup file \"%s\"", configPath);
+      delete kv;
+      return false;
+    }
+    if (kv.JumpToKey("Match")) { 
+      if (kv.JumpToKey("cvars")) { 
+        kv.GetString("get5_web_api_key", g_APIURL, sizeof(g_APIURL));
+      }
+    }
+    delete kv;
+    ServerCommand("get5_loadbackup %s", configPath);
+    return true;
+  }
 }
