@@ -675,7 +675,7 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
   char matchId[64];
   char backupFile[PLATFORM_MAX_PATH];
   event.GetMatchId(matchId, sizeof(matchId));
-  HTTPRequest req = CreateRequest("match/%s/map/%d/backup/%s", 
+  HTTPRequest req = CreateRequest("match/%s/map/%d/round/%d/backup/%s", 
     matchId, event.MapNumber, event.RoundNumber, g_APIKey);
   if (req != null) {
     Format(backupFile, sizeof(backupFile), "get5_backup_match%s_map%d_round%d.cfg", matchId,
