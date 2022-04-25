@@ -158,6 +158,8 @@ static HTTPRequest CreateCustomRequest(const char[] oldUrl, any:...) {
   }
 }
 
+static HTTPRequest CreateDemoRequest(const char[] apiMethod, any:...) {
+  char url[1024];
 
   // Check here to avoid leaks from not deleteing req handle.
   if (StrEqual(g_storedAPIKey, "")) {
