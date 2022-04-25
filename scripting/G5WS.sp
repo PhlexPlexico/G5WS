@@ -75,8 +75,8 @@ public void OnPluginStart() {
 
   RegConsoleCmd("get5_web_available", Command_Available);
 
-  //RegAdminCmd("get5_loadbackup_url", Command_LoadBackupUrl, ADMFLAG_CHANGEMAP,
-  //           "Loads a get5 match backup from a URL.");
+  RegAdminCmd("get5_loadbackup_url", Command_LoadBackupUrl, ADMFLAG_CHANGEMAP,
+             "Loads a get5 match backup from a URL.");
 }
 
 public Action Command_Available(int client, int args) {
@@ -650,7 +650,7 @@ public void Get5_OnMatchUnpaused(const Get5MatchUnpausedEvent event) {
   delete matchUnpause;
 }
 
-/*
+
 public Action Command_LoadBackupUrl(int client, int args) {
   bool ripExtAvailable = LibraryExists("ripext");
 
@@ -714,4 +714,4 @@ stock bool LoadBackupFromUrl(const char[] url) {
     ServerCommand("get5_loadbackup %s", configPath);
     return true;
   }
-}*/
+}
