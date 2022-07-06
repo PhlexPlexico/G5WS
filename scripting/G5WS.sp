@@ -491,6 +491,7 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
   GetTeamString(seriesWinner, winnerString, sizeof(winnerString));
   
   bool isCancelled = StrEqual(winnerString, "none", false);
+  ConVar timeToStartCvar = FindConVar("get5_time_to_start");
   KeyValues kv = new KeyValues("Stats");
   Get5_GetMatchStats(kv);
   bool forfeit = kv.GetNum(STAT_SERIES_FORFEIT, 0) != 0;
@@ -502,6 +503,13 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
   // This has been a source of double sending match results and producing errors.
   // So we really need to check if we are in an edge case BO2 where a score is 1-1.
   if (req != null && (team1MapScore == team2MapScore || !isCancelled)) {
+    seriesRes.SetString("key", g_APIKey);
+    seriesRes.SetString("winner", winnerString);
+    seriesRes.SetInt("team1score", team1MapScore);
+    seriesRes.SetInt("team2score", team2MapScore);
+    seriesRes.SetInt("forfeit", forfeit);
+    req.Post(seriesRes, RequestCallback);
+  } else if (forfeit && isCancelled && timeToStartCvar.IntValue > 0) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", team1MapScore);
