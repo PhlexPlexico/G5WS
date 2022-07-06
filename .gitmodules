@@ -1,4 +1,4 @@
 [submodule "get5"]
 	path = get5
 	url = https://github.com/splewis/get5
-	branch = master
+	branch = 0.9

@@ -42,6 +42,7 @@ char g_storedAPIURL[128];
 char g_storedAPIKey[128];
 
 ConVar g_EnableDemoUpload;
+ConVar g_EnableSupportMessage;
 
 #define LOGO_DIR "materials/panorama/images/tournaments/teams"
 #define LEGACY_LOGO_DIR "resource/flash/econ/tournaments/teams"
@@ -63,7 +64,9 @@ public void OnPluginStart() {
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
 
-  g_EnableDemoUpload = CreateConVar("get5_upload_demos", "0", "Upload demo on post match.");
+  g_EnableDemoUpload = CreateConVar("get5_upload_demos", "1", "Upload demo on post match.");
+
+  g_EnableSupportMessage = CreateConVar("get5_api_support_message", "1", "Enable a dono message every half time.");
 
   g_APIKeyCvar =
       CreateConVar("get5_web_api_key", "", "Match API key, this is automatically set through rcon", FCVAR_DONTRECORD);
@@ -687,6 +690,36 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     LogDebug("COMPLETE!");
   }
   return;
+}
+
+public void Get5_OnRoundEnd(const Get5RoundEndedEvent event) {
+  int roundsPerHalf = GetCvarIntSafe("mp_maxrounds") / 2;
+  int roundsPerOTHalf = GetCvarIntSafe("mp_overtime_maxrounds") / 2;
+
+  bool halftimeEnabled = (GetCvarIntSafe("mp_halftime") != 0);
+
+  if (halftimeEnabled) {
+
+      // Regulation halftime. (after round 15)
+      if (event.RoundNumber == roundsPerHalf) {
+        Get5_MessageToAll("This match has been brought to you by G5API!");
+        if (g_EnableSupportMessage.BoolValue) {
+          Get5_MessageToAll("Consider supporting @ https://github.com/phlexplexico/G5API !");
+        }
+      }
+
+      // Now in OT.
+      if (event.RoundNumber >= 2 * roundsPerHalf) {
+        int otround = event.RoundNumber - 2 * roundsPerHalf;  // round 33 -> round 3, etc.
+        // Do side swaps at OT halves (rounds 3, 9, ...)
+        if ((otround + roundsPerOTHalf) % (2 * roundsPerOTHalf) == 0) {
+          Get5_MessageToAll("This match has been brought to you by G5API!");
+          if (g_EnableSupportMessage.BoolValue) {
+            Get5_MessageToAll("Consider supporting @ https://github.com/phlexplexico/G5API !");
+          }
+        }
+      }
+    }
 }
 
 stock bool LoadBackupFromUrl(const char[] url) {

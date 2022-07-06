@@ -26,6 +26,8 @@ The extension REST In PAWN is required in order to run this.
 Q. Why not use SteamWorks Extension?
 A. The main reason is due to the fact that RiP has a JSON library included, and we can send octet-streams as well. This enables demo uploads directly to the server without any additional libraries used.
 
+Q. What is this stupid support message?  
+A. In order to get the message out about match management systems, a donation message is loaded each half. If you would like to disable it, simply put `get5_api_support_message 0` in your `live.cfg` :)
 
 ## Thanks To
 [splewis](https://github.com/splewis) for the initial plugin. It was stated that this could be used as a modified product, or forked. 
