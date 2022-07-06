@@ -587,6 +587,7 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
   GetTeamString(event.Winner, winnerString, sizeof(winnerString));
   
   bool isCancelled = StrEqual(winnerString, "none", false);
+  ConVar timeToStartCvar = FindConVar("get5_time_to_start");
   KeyValues kv = new KeyValues("Stats");
   Get5_GetMatchStats(kv);
   bool forfeit = kv.GetNum(STAT_SERIES_FORFEIT, 0) != 0;
@@ -602,6 +603,13 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", event.Team1Score);
     seriesRes.SetInt("team2score", event.Team2Score);
+    seriesRes.SetInt("forfeit", forfeit);
+    req.Post(seriesRes, RequestCallback);
+  } else if (forfeit && isCancelled && timeToStartCvar.IntValue > 0) {
+    seriesRes.SetString("key", g_APIKey);
+    seriesRes.SetString("winner", winnerString);
+    seriesRes.SetInt("team1score", team1MapScore);
+    seriesRes.SetInt("team2score", team2MapScore);
     seriesRes.SetInt("forfeit", forfeit);
     req.Post(seriesRes, RequestCallback);
   }
