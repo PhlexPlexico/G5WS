@@ -509,7 +509,7 @@ public void Get5_OnSeriesResult(MatchTeam seriesWinner, int team1MapScore, int t
     seriesRes.SetInt("team2score", team2MapScore);
     seriesRes.SetInt("forfeit", forfeit);
     req.Post(seriesRes, RequestCallback);
-  } else if (forfeit && isCancelled && timeToStartCvar.IntValue > 0) {
+  } else if (req != null && (forfeit && isCancelled && timeToStartCvar.IntValue > 0)) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
     seriesRes.SetInt("team1score", team1MapScore);
