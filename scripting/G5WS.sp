@@ -284,8 +284,8 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
 }
 
 public void UpdateRoundStats(const char[] matchId, int mapNumber) {
-  int team1Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team1));
-  int team2Score = CS_GetTeamScore(Get5_MatchTeamToCSTeam(MatchTeam_Team2));
+  int team1Score = CS_GetTeamScore(Get5_Get5TeamToCSTeam(Get5Team_1));
+  int team2Score = CS_GetTeamScore(Get5_Get5TeamToCSTeam(Get5Team_2));
 
   HTTPRequest req = CreateRequest("match/%s/map/%d/update", matchId, mapNumber);
   JSONObject rndStat = new JSONObject();
@@ -302,11 +302,11 @@ public void UpdateRoundStats(const char[] matchId, int mapNumber) {
   Format(mapKey, sizeof(mapKey), "map%d", mapNumber);
   if (kv.JumpToKey(mapKey)) {
     if (kv.JumpToKey("team1")) {
-      UpdatePlayerStats(matchId, kv, MatchTeam_Team1);
+      UpdatePlayerStats(matchId, kv, Get5Team_1);
       kv.GoBack();
     }
     if (kv.JumpToKey("team2")) {
-      UpdatePlayerStats(matchId, kv, MatchTeam_Team2);
+      UpdatePlayerStats(matchId, kv, Get5Team_2);
       kv.GoBack();
     }
     kv.GoBack();
@@ -320,7 +320,7 @@ public void Get5_OnMapResult(const Get5MapResultEvent event) {
   char winnerString[64];
   
   event.GetMatchId(matchId, sizeof(matchId));
-  GetTeamString(event.Winner, winnerString, sizeof(winnerString));
+  GetTeamString(event.Winner.Team, winnerString, sizeof(winnerString));
 
   HTTPRequest req = CreateRequest("match/%s/map/%d/finish", matchId, event.MapNumber);
   JSONObject mtchRes = new JSONObject();
@@ -335,7 +335,7 @@ public void Get5_OnMapResult(const Get5MapResultEvent event) {
   delete mtchRes;
 }
 
-public void UpdatePlayerStats(const char[] matchId, KeyValues kv, MatchTeam team) {
+public void UpdatePlayerStats(const char[] matchId, KeyValues kv, Get5Team team) {
   char name[MAX_NAME_LENGTH];
   char auth[AUTH_LENGTH];
   int clientNum;
@@ -444,7 +444,7 @@ public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
   HTTPRequest req = CreateRequest("match/%s/map/%d/player/%s/extras/update", matchId,
                                  mapNumber, attackerSteamId);
   if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
-    event.GetWeapon(weaponName, sizeof(weaponName));
+    event.Weapon.GetWeaponName(weaponName, sizeof(weaponName));
     advancedStats.SetString("key", g_APIKey);
     advancedStats.SetInt("mapNumber", mapNumber);
     advancedStats.SetString("attackerSteamId", attackerSteamId);
@@ -505,9 +505,9 @@ public void Get5_OnSidePicked(const Get5SidePickedEvent event) {
   LogDebug("Side Choice for Map veto: Side picked %d on map %s for team %s", event.Side, mapName, event.Team);
   HTTPRequest req = CreateRequest("match/%s/vetoSideUpdate", matchId);
   JSONObject vetoSideData = new JSONObject();
-  if (event.Side == Counter_Terrorists) {
+  if (event.Side == Get5Side_CT) {
     Format(charSide, sizeof(charSide), "CT");
-  } else if (event.Side == Terrorists) {
+  } else if (event.Side == Get5Side_T) {
     Format(charSide, sizeof(charSide), "T");
   } else {
     Format(charSide, sizeof(charSide), "UNK");
@@ -584,7 +584,7 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
   char matchId[64];
 
   event.GetMatchId(matchId, sizeof(matchId));
-  GetTeamString(event.Winner, winnerString, sizeof(winnerString));
+  GetTeamString(event.Winner.Team, winnerString, sizeof(winnerString));
   
   bool isCancelled = StrEqual(winnerString, "none", false);
   ConVar timeToStartCvar = FindConVar("get5_time_to_start");
@@ -598,18 +598,18 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
   // Need to check that we are indeed a best of two match as well.
   // This has been a source of double sending match results and producing errors.
   // So we really need to check if we are in an edge case BO2 where a score is 1-1.
-  if (req != null && (event.Team1Score == event.Team2Score || !isCancelled)) {
+  if (req != null && (event.Team1SeriesScore == event.Team2SeriesScore || !isCancelled)) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
-    seriesRes.SetInt("team1score", event.Team1Score);
-    seriesRes.SetInt("team2score", event.Team2Score);
+    seriesRes.SetInt("team1score", event.Team1SeriesScore);
+    seriesRes.SetInt("team2score", event.Team2SeriesScore);
     seriesRes.SetInt("forfeit", forfeit);
     req.Post(seriesRes, RequestCallback);
   } else if (forfeit && isCancelled && timeToStartCvar.IntValue > 0) {
     seriesRes.SetString("key", g_APIKey);
     seriesRes.SetString("winner", winnerString);
-    seriesRes.SetInt("team1score", team1MapScore);
-    seriesRes.SetInt("team2score", team2MapScore);
+    seriesRes.SetInt("team1score", event.Team1SeriesScore);
+    seriesRes.SetInt("team2score", event.Team2SeriesScore);
     seriesRes.SetInt("forfeit", forfeit);
     req.Post(seriesRes, RequestCallback);
   }
@@ -630,9 +630,9 @@ public void Get5_OnMatchPaused(const Get5MatchPausedEvent event) {
   char teamString[64];
   char pauseType[4];
 
-  if (event.PauseType == PauseType_Tactical) {
+  if (event.PauseType == Get5PauseType_Tactical) {
     Format(pauseType, sizeof(pauseType), "Tact");
-  } else if (event.PauseType == PauseType_Tech) {
+  } else if (event.PauseType == Get5PauseType_Tech) {
     Format(pauseType, sizeof(pauseType), "Tech");
   }
   HTTPRequest req = CreateRequest("match/%s/pause", matchId);
