@@ -693,7 +693,7 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
   if (req != null) {
     Format(backupFile, sizeof(backupFile), "get5_backup_match%s_map%d_round%d.cfg", matchId,
            event.MapNumber, event.RoundNumber);
-    LogDebug("Uploading backup %s to server.");
+    LogDebug("Uploading backup %s to server.", backupFile);
     req.UploadFile(backupFile, LogoCallback);
     LogDebug("COMPLETE!");
   }
