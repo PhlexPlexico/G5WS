@@ -532,7 +532,7 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
   if (g_EnableDemoUpload.BoolValue && filename[0]) {
     LogDebug("About to enter UploadDemo. SO YES WE ARE. Our match ID is %s", matchId);
     int mapNumber = event.MapNumber;
-    HTTPRequest req = CreateDemoRequest("match/%s/map/%d/demo", matchId, mapNumber-1);
+    HTTPRequest req = CreateDemoRequest("match/%s/map/%d/demo", matchId, mapNumber);
     JSONObject demoJSON = new JSONObject();
     LogDebug("Our api url: %s", g_storedAPIURL);
     // Send demo file name to store in database to show users at end of match.
@@ -541,7 +541,7 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
       LogDebug("Our demo string: %s", filename);
       demoJSON.SetString("demoFile", filename);
       req.Post(demoJSON, RequestCallback);
-      req = CreateDemoRequest("match/%s/map/%d/demo/upload/%s", matchId, mapNumber-1, g_storedAPIKey);
+      req = CreateDemoRequest("match/%s/map/%d/demo/upload/%s", matchId, mapNumber, g_storedAPIKey);
       if (req != null) {
         LogDebug("Uploading demo to server...");
         req.UploadFile(filename, OnDemoUploaded);
