@@ -51,15 +51,15 @@ ConVar g_EnableSupportMessage;
 public Plugin myinfo = {
   name = "G5WS - Get5 Web Stats",
   author = "phlexplexico",
-  description = "Sends match information to G5API.",
-  version = "3.1",
+  description = "Sends and receives match information to/from G5API.",
+  version = "3.1.1",
   url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "G5WS");
-  LogDebug("OnPluginStart version=3.1");
+  LogDebug("OnPluginStart version=3.1.1");
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -245,15 +245,15 @@ public void CheckForLogo(const char[] logo) {
     if (req == null) {
       return;
     }
-    req.DownloadFile(logoPath, LogoCallback);
+    req.DownloadFile(logoPath, GenericCallback);
     
     LogMessage("Saved logo for %s at %s", logo, logoPath);
   }
 }
 
-public void LogoCallback(HTTPStatus status, any value) {
+public void GenericCallback(HTTPStatus status, any value) {
   if (status != HTTPStatus_OK) {
-    LogError("Logo request failed, status code = %d", status);
+    LogError("Request failed, status code = %d", status);
     return;
   }
   return;
@@ -673,11 +673,9 @@ public Action Command_LoadBackupUrl(int client, int args) {
   } else {
     char arg[PLATFORM_MAX_PATH];
     if (args >= 1 && GetCmdArgString(arg, sizeof(arg))) {
-      if (!LoadBackupFromUrl(arg)) {
-        ReplyToCommand(client, "Failed to load match backup.");
-      } else {
-        return;
-      }
+      LogDebug("Our Backup URL is %s", arg);
+      LoadBackupFromUrl(arg);
+      return;
     } else {
       ReplyToCommand(client, "Usage: get5_loadbackup_url <url>");
     }
@@ -694,7 +692,7 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     Format(backupFile, sizeof(backupFile), "get5_backup_match%s_map%d_round%d.cfg", matchId,
            event.MapNumber, event.RoundNumber);
     LogDebug("Uploading backup %s to server.", backupFile);
-    req.UploadFile(backupFile, LogoCallback);
+    req.UploadFile(backupFile, GenericCallback);
     LogDebug("COMPLETE!");
   }
   return;
@@ -740,21 +738,37 @@ stock bool LoadBackupFromUrl(const char[] url) {
   if (req == INVALID_HANDLE) {
     return false;
   } else {
-    req.DownloadFile(configPath, LogoCallback);
-    // Set API key. This is used as preround start does not have it set yet.
-    KeyValues kv = new KeyValues("Backup");
-    if (!kv.ImportFromFile(configPath)) {
-      LogError("Failed to find read backup file \"%s\"", configPath);
-      delete kv;
-      return false;
-    }
-    if (kv.JumpToKey("Match")) { 
-      if (kv.JumpToKey("cvars")) { 
-        kv.GetString("get5_web_api_key", g_APIURL, sizeof(g_APIURL));
-      }
+    req.DownloadFile(configPath, GenericCallback);
+    Get5_MessageToAll("Restoring the match from a remote config in 5 seconds.");
+    DataPack timerPack;
+    CreateDataTimer(5.0, DelayLoadBackup, timerPack, TIMER_FLAG_NO_MAPCHANGE);
+    timerPack.WriteString(configPath);
+    return true;
+  }
+}
+
+public Action DelayLoadBackup(Handle timer, DataPack pack) {
+  char configPath[PLATFORM_MAX_PATH];
+  pack.Reset();
+  pack.ReadString(configPath, sizeof(configPath));
+  // Set API key. This is used as preround start does not have it set yet.
+  KeyValues kv = new KeyValues("Backup");
+  if (!kv.ImportFromFile(configPath)) {
+    LogError("Failed to read backup file \"%s\"", configPath);
+    delete kv;
+    return Plugin_Stop;
+  }
+  if (kv.JumpToKey("Match")) {
+    if (kv.JumpToKey("cvars")) { 
+      kv.GetString("get5_web_api_key", g_APIURL, sizeof(g_APIURL));
     }
     delete kv;
     ServerCommand("get5_loadbackup %s", configPath);
-    return true;
+    delete pack;
+    return Plugin_Continue;
+  } else {
+    delete pack;
+    Get5_MessageToAll("Failed to load match backup.");
+    return Plugin_Stop;
   }
 }
