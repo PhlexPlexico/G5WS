@@ -424,7 +424,7 @@ public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
   char mapKey[32];
   Format(mapKey, sizeof(mapKey), "map%d", mapNumber);
   kv.JumpToKey(mapKey);
-  if (attackerSteamId != null && kv.GotoFirstSubKey()) {
+  if (!strcmp(attackerSteamId, "", false) && kv.GotoFirstSubKey()) {
     kv.JumpToKey(attackerSteamId);
     kv.GetString("name", attackerName, sizeof(attackerName));
     kv.GoBack();
@@ -691,8 +691,9 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     matchId, event.MapNumber, event.RoundNumber, g_APIKey);
   if (req != null) {
     char backupDirectory[PLATFORM_MAX_PATH];
-    GetConVarStringSafe(backupDirectory, "get5_backup_path", sizeof(backupDirectory));
-    Format(backupFile, sizeof(backupFile), "%s/get5_backup_match%s_map%d_round%d.cfg", backupDirectory,
+    GetConVarStringSafe("get5_backup_path", backupDirectory, sizeof(backupDirectory));
+    ReplaceString(backupDirectory, sizeof(backupDirectory), "{MATCHID}", matchId);
+    Format(backupFile, sizeof(backupFile), "%sget5_backup_match%s_map%d_round%d.cfg", backupDirectory,
            matchId, event.MapNumber, event.RoundNumber);
     LogDebug("Uploading backup %s to server.", backupFile);
     req.UploadFile(backupFile, GenericCallback);
