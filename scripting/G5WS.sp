@@ -27,6 +27,8 @@
 
 #include <ripext>
 
+#define PLUGIN_VERSION "3.1.2"
+
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -52,14 +54,14 @@ public Plugin myinfo = {
   name = "G5WS - Get5 Web Stats",
   author = "phlexplexico",
   description = "Sends and receives match information to/from G5API.",
-  version = "3.1.1",
+  version = PLUGIN_VERSION,
   url = "https://github.com/phlexplexico/G5WS"
 };
 // clang-format on
 
 public void OnPluginStart() {
   InitDebugLog("get5_debug", "G5WS");
-  LogDebug("OnPluginStart version=3.1.1");
+  LogDebug("OnPluginStart version=%s", PLUGIN_VERSION);
   g_UseSVGCvar = CreateConVar("get5_use_svg", "0", "support svg team logos");
   HookConVarChange(g_UseSVGCvar, LogoBasePathChanged);
   g_LogoBasePath = g_UseSVGCvar.BoolValue ? LOGO_DIR : LEGACY_LOGO_DIR;
@@ -246,8 +248,34 @@ public void CheckForLogo(const char[] logo) {
       return;
     }
     req.DownloadFile(logoPath, GenericCallback);
-    
+    DataPack logoPack;
+    CreateTimer(2.0, AddLogoToDownloadTable, logoPack, TIMER_FLAG_NO_MAPCHANGE);
+    logoPack.WriteString(logo);
     LogMessage("Saved logo for %s at %s", logo, logoPath);
+  }
+}
+
+public Action AddLogoToDownloadTable(Handle timer, DataPack pack) {
+  char logoName[PLATFORM_MAX_PATH + 1];
+  pack.Reset();
+  pack.ReadString(logoName, sizeof(logoName));
+  if (StrEqual(logoName, ""))
+    return;
+
+  
+  char logoPath[PLATFORM_MAX_PATH + 1];
+  Format(logoPath, sizeof(logoPath), "materials/panorama/images/tournaments/teams/%s.svg", logoName);
+  if (FileExists(logoPath)) {
+    LogDebug("Adding file %s to download table", logoName);
+    AddFileToDownloadsTable(logoPath);
+  } else {
+    Format(logoPath, sizeof(logoPath), "resource/flash/econ/tournaments/teams/%s.png", logoName);
+    if (FileExists(logoPath)) {
+      LogDebug("Adding file %s to download table", logoName);
+      AddFileToDownloadsTable(logoPath);
+    } else {
+      LogError("Error in locating file %s. Please ensure the file exists on your game server, in either of the team logo directories.", logoName);
+    }
   }
 }
 
