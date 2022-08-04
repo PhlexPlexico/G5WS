@@ -426,7 +426,7 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, Get5Team team)
 }
 
 // New Feat: Add in additional info on what killed a user. To be used with sockets?
-public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+/*public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
   char matchId[64];
   char attackerSteamId[AUTH_LENGTH];
   char attackerName[MAX_NAME_LENGTH];
@@ -498,7 +498,7 @@ public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
     req.Post(advancedStats, RequestCallback);
   }
   delete advancedStats;
-}
+}*/
 
 public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   char matchId[64];
