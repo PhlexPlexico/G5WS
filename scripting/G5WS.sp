@@ -248,9 +248,9 @@ public void CheckForLogo(const char[] logo) {
       return;
     }
     req.DownloadFile(logoPath, GenericCallback);
-    DataPack logoPack;
-    CreateTimer(2.0, AddLogoToDownloadTable, logoPack, TIMER_FLAG_NO_MAPCHANGE);
+    DataPack logoPack = CreateDataPack();
     logoPack.WriteString(logo);
+    CreateTimer(2.0, AddLogoToDownloadTable, logoPack, TIMER_FLAG_NO_MAPCHANGE);
     LogMessage("Saved logo for %s at %s", logo, logoPath);
   }
 }
