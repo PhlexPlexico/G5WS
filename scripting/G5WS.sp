@@ -1,7 +1,7 @@
 /**
  * =============================================================================
- * Get5 web API integration
- * Copyright (C) 2016. Sean Lewis.  All rights reserved.
+ * Get5 Web Stats (G5WS)
+ * Copyright (C) 2021. Sean Lewis/Phlex Plexico.  All rights reserved.
  * =============================================================================
  *
  * This program is free software: you can redistribute it and/or modify
@@ -120,12 +120,6 @@ public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] ne
     StrCat(g_APIURL, sizeof(g_APIURL), "/");
   }
 
-  // Store Cvar since it gets reset after match finishes?
-  if (g_EnableDemoUpload.BoolValue) {
-    Format(g_storedAPIKey, sizeof(g_storedAPIKey), g_APIKey);
-    Format(g_storedAPIURL, sizeof(g_storedAPIURL), g_APIURL);
-  }
-  
   LogDebug("get5_web_api_url now set to %s", g_APIURL);
 }
 
@@ -139,7 +133,7 @@ static Handle CreateRequest(EHTTPMethod httpMethod, const char[] apiMethod, any:
   LogDebug("Trying to create request to url %s", formattedUrl);
 
   Handle req = SteamWorks_CreateHTTPRequest(httpMethod, formattedUrl);
-  if (StrEqual(g_APIKey, "") || StrEqual(g_storedAPIKey, "")) {
+  if (StrEqual(g_APIKey, "") && StrEqual(g_storedAPIKey, "")) {
     // Not using a web interface.
     return INVALID_HANDLE;
   } else if (req == INVALID_HANDLE) {
@@ -280,10 +274,14 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/map/%d/start", matchId, event.MapNumber);
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "mapname", mapName);
-    LogDebug("CREATING THE ONGOINGLIVE REQUEST");
     SteamWorks_SendHTTPRequest(req);
   }
 
+  // Store Cvar since it gets reset after match finishes?
+  if (g_EnableDemoUpload.BoolValue) {
+    Format(g_storedAPIKey, sizeof(g_storedAPIKey), g_APIKey);
+    Format(g_storedAPIURL, sizeof(g_storedAPIURL), g_APIURL);
+  }
 
   Get5_AddLiveCvar("get5_web_api_key", g_APIKey);
   Get5_AddLiveCvar("get5_web_api_url", g_APIURL);
@@ -438,7 +436,6 @@ public void Get5_OnSidePicked(const Get5SidePickedEvent event) {
     AddStringParam(req, "side", charSide);
     SteamWorks_SendHTTPRequest(req);
   }
-  LogDebug("Accepted side picked for map %s.", mapName);
 }
 
 public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
@@ -449,7 +446,6 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   event.GetMapName(mapName, sizeof(mapName));
   GetTeamString(event.Team, teamString, sizeof(teamString));
   
-  LogDebug("Map Veto START team %s map vetoed %s", event.Team, mapName);
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/vetoUpdate", matchId);
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "map", mapName);
@@ -457,7 +453,6 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
     AddStringParam(req, "pick_or_veto", "ban");  
     SteamWorks_SendHTTPRequest(req);
   }
-  LogDebug("Accepted Map Veto for team %s.", teamString);
 }
 
 public void Get5_OnMapPicked(const Get5MapPickedEvent event){
@@ -469,7 +464,6 @@ public void Get5_OnMapPicked(const Get5MapPickedEvent event){
   event.GetMatchId(matchId, sizeof(matchId));
   event.GetMapName(mapName, sizeof(mapName));
   GetTeamString(event.Team, teamString, sizeof(teamString));
-  LogDebug("Map Pick START team %s map vetoed %s", event.Team, mapName);
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/vetoUpdate", matchId);
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "map", mapName);
@@ -477,7 +471,6 @@ public void Get5_OnMapPicked(const Get5MapPickedEvent event){
     AddStringParam(req, "pick_or_veto", "pick");
     SteamWorks_SendHTTPRequest(req);
   }
-  LogDebug("Accepted Map Pick.");
 }
 
 public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
@@ -534,9 +527,9 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
         k_EHTTPMethodPUT, "match/%s/map/%d/demo/upload/%s", matchId, mapNumber, g_storedAPIKey);
       if (fileReq != INVALID_HANDLE) {
         LogDebug("Uploading demo to server...");
-        SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", filename);
-        SteamWorks_SetHTTPCallbacks(req, DemoCallback);
-        SteamWorks_SendHTTPRequest(req);
+        SteamWorks_SetHTTPRequestRawPostBodyFromFile(fileReq, "application/octet-stream", filename);
+        SteamWorks_SetHTTPCallbacks(fileReq, DemoCallback);
+        SteamWorks_SendHTTPRequest(fileReq);
       }
     }
 
@@ -610,10 +603,9 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     ReplaceString(backupDirectory, sizeof(backupDirectory), "{MATCHID}", matchId);
     Format(backupFile, sizeof(backupFile), "%sget5_backup_match%s_map%d_round%d.cfg", backupDirectory,
            matchId, event.MapNumber, event.RoundNumber);
-    LogDebug("Uploading backup %s to server.", backupFile);
-    SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "text/plain", backupFile);
+    SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", backupFile);
+    SteamWorks_SetHTTPCallbacks(req, RequestCallback);
     SteamWorks_SendHTTPRequest(req);
-    LogDebug("COMPLETE!");
   }
   return;
 }
