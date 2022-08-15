@@ -120,6 +120,12 @@ public void ApiInfoChanged(ConVar convar, const char[] oldValue, const char[] ne
     StrCat(g_APIURL, sizeof(g_APIURL), "/");
   }
 
+  // Store Cvar since it gets reset after match finishes?
+  if (g_EnableDemoUpload.BoolValue) {
+    Format(g_storedAPIKey, sizeof(g_storedAPIKey), g_APIKey);
+    Format(g_storedAPIURL, sizeof(g_storedAPIURL), g_APIURL);
+  }
+  
   LogDebug("get5_web_api_url now set to %s", g_APIURL);
 }
 
@@ -274,14 +280,10 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/map/%d/start", matchId, event.MapNumber);
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "mapname", mapName);
+    LogDebug("CREATING THE ONGOINGLIVE REQUEST");
     SteamWorks_SendHTTPRequest(req);
   }
 
-  // Store Cvar since it gets reset after match finishes?
-  if (g_EnableDemoUpload.BoolValue) {
-    Format(g_storedAPIKey, sizeof(g_storedAPIKey), g_APIKey);
-    Format(g_storedAPIURL, sizeof(g_storedAPIURL), g_APIURL);
-  }
 
   Get5_AddLiveCvar("get5_web_api_key", g_APIKey);
   Get5_AddLiveCvar("get5_web_api_url", g_APIURL);
@@ -290,7 +292,7 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
 public void UpdateRoundStats(const char[] matchId, int mapNumber) {
   int t1score = CS_GetTeamScore(Get5_Get5TeamToCSTeam(Get5Team_1));
   int t2score = CS_GetTeamScore(Get5_Get5TeamToCSTeam(Get5Team_2));
-
+  LogDebug("Updating round stats...");
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/map/%d/update", matchId, mapNumber);
   if (req != INVALID_HANDLE) {
     AddIntParam(req, "team1score", t1score);
@@ -502,7 +504,7 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
     AddIntParam(req, "team2score", event.Team2SeriesScore);
     AddIntParam(req, "forfeit", forfeit);
     SteamWorks_SendHTTPRequest(req);
-  } else if (req != null && (forfeit && isCancelled && timeToStartCvar.IntValue > 0)) {
+  } else if (req != INVALID_HANDLE && (forfeit && isCancelled && timeToStartCvar.IntValue > 0)) {
     AddStringParam(req, "winner", winnerString);
     AddIntParam(req, "team1score", event.Team1SeriesScore);
     AddIntParam(req, "team2score", event.Team2SeriesScore);
@@ -549,11 +551,13 @@ public void Get5_OnMatchPaused(const Get5MatchPausedEvent event) {
   char teamString[64];
   char pauseType[4];
 
+  event.GetMatchId(matchId, sizeof(matchId));
   if (event.PauseType == Get5PauseType_Tactical) {
     Format(pauseType, sizeof(pauseType), "Tact");
   } else if (event.PauseType == Get5PauseType_Tech) {
     Format(pauseType, sizeof(pauseType), "Tech");
   }
+
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/pause", matchId);
   GetTeamString(event.Team, teamString, sizeof(teamString));
   if (req != INVALID_HANDLE) {
