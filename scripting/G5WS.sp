@@ -179,8 +179,9 @@ public int RequestCallback(Handle request, bool failure, bool requestSuccessful,
     char response[1024];
     SteamWorks_GetHTTPResponseBodyData(request, response, sizeof(response));
     LogError(response);
-    return;
   }
+  delete request;
+  return;
 }
 
 public void Get5_OnSeriesInit(const Get5SeriesStartedEvent event) {
@@ -236,13 +237,15 @@ public void CheckForLogo(const char[] logo) {
 public int DemoCallback(Handle request, bool failure, bool successful, EHTTPStatusCode status, int data) {
   if (failure || !successful) {
     LogError("Demo request failed, status code = %d", status);
-    return;
   }
+  delete request;
+  return;
 }
 
 public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStatusCode status, int data) {
   if (failure || !successful) {
     LogError("Logo request failed, status code = %d", status);
+    delete request;
     return;
   }
 
@@ -262,6 +265,7 @@ public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStat
   SteamWorks_WriteHTTPResponseBodyToFile(request, logoPath);
 
   AddFileToDownloadsTable(logoPath);
+  delete request;
 }
 
 public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
@@ -604,7 +608,6 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     Format(backupFile, sizeof(backupFile), "%sget5_backup_match%s_map%d_round%d.cfg", backupDirectory,
            matchId, event.MapNumber, event.RoundNumber);
     SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", backupFile);
-    SteamWorks_SetHTTPCallbacks(req, RequestCallback);
     SteamWorks_SendHTTPRequest(req);
   }
   return;
