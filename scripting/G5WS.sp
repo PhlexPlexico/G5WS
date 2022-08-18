@@ -138,8 +138,8 @@ static Handle CreateRequest(EHTTPMethod httpMethod, const char[] apiMethod, any:
     return INVALID_HANDLE;
   } else if (req == INVALID_HANDLE) {
     LogError("Failed to create request to %s", formattedUrl);
+    delete req;
     return INVALID_HANDLE;
-
   } else {
     SteamWorks_SetHTTPCallbacks(req, RequestCallback);
     if (StrEqual(g_APIKey, "")) {
@@ -165,6 +165,7 @@ static Handle CreateRequestNoKey(EHTTPMethod httpMethod, const char[] apiMethod,
   if (req == INVALID_HANDLE) {
     // Failed to init.
     LogError("Failed to create request to %s", formattedUrl);
+    delete req;
     return INVALID_HANDLE;
   } else {
     SteamWorks_SetHTTPCallbacks(req, RequestCallback);  
