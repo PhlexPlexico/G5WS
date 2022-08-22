@@ -239,7 +239,6 @@ public int DemoCallback(Handle request, bool failure, bool successful, EHTTPStat
   if (failure || !successful) {
     LogError("Demo request failed, status code = %d", status);
   }
-  delete request;
   return;
 }
 
