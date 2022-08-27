@@ -58,7 +58,6 @@ jobs:
               cp -f ../SteamWorks.inc ./addons/sourcemod/scripting/include/SteamWorks.inc
               cp -f ../get5/scripting/include/get5.inc ./addons/sourcemod/scripting/include/get5.inc
               cp -f ../get5/scripting/include/logdebug.inc ./addons/sourcemod/scripting/include/logdebug.inc
-              cp -f ../get5/scripting/include/jsonhelpers.inc ./addons/sourcemod/scripting/include/jsonhelpers.inc
               cp -f ../get5/scripting/get5/util.sp ./addons/sourcemod/scripting/get5/util.sp
               cp -r ../get5/dependencies/sm-json/addons/sourcemod/scripting/include/* ./addons/sourcemod/scripting/include/
           }

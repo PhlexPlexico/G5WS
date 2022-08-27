@@ -30,7 +30,6 @@
 
 #define PLUGIN_VERSION "4.0.0"
 
-#include "get5/jsonhelpers.sp"
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -202,6 +201,31 @@ public void Get5_OnSeriesInit(const Get5SeriesStartedEvent event) {
   GetConVarStringSafe("mp_teamlogo_2", logo2, sizeof(logo2));
   CheckForLogo(logo1);
   CheckForLogo(logo2);
+}
+
+// New Feat: Socket calls for OnPlayerDeath for live update.
+public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+  char matchId[64];
+  char attackerSteamId[AUTH_LENGTH];
+  char victimSteamId[AUTH_LENGTH];
+  int mapNumber = Get5_GetMapNumber();
+  int clientNum;
+
+  event.GetMatchId(matchId, sizeof(matchId));
+  if (event.HasAttacker()) {
+    event.Attacker.GetSteamId(attackerSteamId, sizeof(attackerSteamId));
+  }
+  event.Player.GetSteamId(victimSteamId, sizeof(victimSteamId));
+  clientNum = AuthToClient(attackerSteamId);
+  Handle req = CreateRequest(k_EHTTPMethodPUT, "match/%s/map/%d/player/%s/extras/update", matchId,
+                                 mapNumber, attackerSteamId);
+  if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
+    char decodedOutput[8096];
+    event.Encode(decodedOutput, sizeof(decodedOutput));
+    AddStringParam(req, "PlayerDeathValues", decodedOutput);
+    SteamWorks_SendHTTPRequest(req);
+    delete req;
+  }
 }
 
 public void CheckForLogo(const char[] logo) {
@@ -717,4 +741,18 @@ public Action DelayLoadBackup(Handle timer, DataPack pack) {
     Get5_MessageToAll("Failed to load match backup.");
     return Plugin_Stop;
   }
+}
+
+// Brought in to avoid compilation errors with utils.sp.
+Get5Side GetClientCoachingSide(int client) {
+  if (GetClientTeam(client) != CS_TEAM_SPECTATOR) {
+   return Get5Side_None;
+  }
+  int side = GetEntProp(client, Prop_Send, "m_iCoachingTeam");
+  if (side == CS_TEAM_CT) {
+    return Get5Side_CT;
+  } else if (side == CS_TEAM_T) {
+    return Get5Side_T;
+  }
+  return Get5Side_None;
 }
