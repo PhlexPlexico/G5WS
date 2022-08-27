@@ -181,7 +181,6 @@ public int RequestCallback(Handle request, bool failure, bool requestSuccessful,
     SteamWorks_GetHTTPResponseBodyData(request, response, sizeof(response));
     LogError(response);
   }
-  delete request;
   return;
 }
 
@@ -232,6 +231,7 @@ public void CheckForLogo(const char[] logo) {
     SteamWorks_SetHTTPRequestContextValue(req, view_as<int>(pack));
     SteamWorks_SetHTTPCallbacks(req, LogoCallback);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -277,6 +277,7 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "mapname", mapName);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 
   // Store Cvar since it gets reset after match finishes?
@@ -298,6 +299,7 @@ public void UpdateRoundStats(const char[] matchId, int mapNumber) {
     AddIntParam(req, "team1score", t1score);
     AddIntParam(req, "team2score", t2score);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 
   KeyValues kv = new KeyValues("Stats");
@@ -331,6 +333,7 @@ public void Get5_OnMapResult(const Get5MapResultEvent event) {
     AddIntParam(req, "team2score", event.Team2Score);
     AddStringParam(req, "winner", winnerString);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -393,6 +396,7 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, Get5Team team)
         AddIntStat(req, kv, STAT_ENEMIES_FLASHED);
         AddIntStat(req, kv, STAT_FRIENDLIES_FLASHED);
         SteamWorks_SendHTTPRequest(req);
+        delete req;
       }
 
     } while (kv.GotoNextKey());
@@ -437,6 +441,7 @@ public void Get5_OnSidePicked(const Get5SidePickedEvent event) {
     AddStringParam(req, "teamString", teamString);
     AddStringParam(req, "side", charSide);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -454,6 +459,7 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
     AddStringParam(req, "teamString", teamString);
     AddStringParam(req, "pick_or_veto", "ban");  
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -472,6 +478,7 @@ public void Get5_OnMapPicked(const Get5MapPickedEvent event){
     AddStringParam(req, "teamString", teamString);
     AddStringParam(req, "pick_or_veto", "pick");
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -506,6 +513,7 @@ public void Get5_OnSeriesResult(const Get5SeriesResultEvent event) {
     AddIntParam(req, "forfeit", forfeit);
     SteamWorks_SendHTTPRequest(req);
   }
+  delete req;
   g_APIKeyCvar.SetString("");
 }
 
@@ -525,6 +533,7 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
       LogDebug("Our demo string: %s", filename);
       AddStringParam(req, "demoFile", filename);
       SteamWorks_SendHTTPRequest(req);
+      delete req;
       Handle fileReq = CreateRequestNoKey(
         k_EHTTPMethodPUT, "match/%s/map/%d/demo/upload/%s", matchId, mapNumber, g_storedAPIKey);
       if (fileReq != INVALID_HANDLE) {
@@ -532,6 +541,7 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
         SteamWorks_SetHTTPRequestRawPostBodyFromFile(fileReq, "application/octet-stream", filename);
         SteamWorks_SetHTTPCallbacks(fileReq, DemoCallback);
         SteamWorks_SendHTTPRequest(fileReq);
+        delete fileReq;
       }
     }
 
@@ -559,6 +569,7 @@ public void Get5_OnMatchPaused(const Get5MatchPausedEvent event) {
     AddStringParam(req, "pause_type", pauseType);
     AddStringParam(req, "team_paused", teamString);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -572,6 +583,7 @@ public void Get5_OnMatchUnpaused(const Get5MatchUnpausedEvent event) {
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "team_unpaused", teamString);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
 }
 
@@ -607,6 +619,7 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
            matchId, event.MapNumber, event.RoundNumber);
     SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", backupFile);
     SteamWorks_SendHTTPRequest(req);
+    delete req;
   }
   return;
 }
