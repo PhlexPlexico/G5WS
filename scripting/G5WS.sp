@@ -143,8 +143,12 @@ static Handle CreateRequest(EHTTPMethod httpMethod, const char[] apiMethod, any:
   } else {
     SteamWorks_SetHTTPCallbacks(req, RequestCallback);
     if (StrEqual(g_APIKey, "")) {
+      AddStringHeader(req, "key", g_storedAPIKey);
+      LogDebug("Adding the API Key to the body is deprecated. Will be replaced once G5API 1.7.0 is released.");
       AddStringParam(req, "key", g_storedAPIKey);
     } else {
+      AddStringHeader(req, "key", g_APIKey);
+      LogDebug("Adding the API Key to the body is deprecated. Will be replaced once G5API 1.7.0 is released.");
       AddStringParam(req, "key", g_APIKey);
     }
     
@@ -401,6 +405,14 @@ public void UpdatePlayerStats(const char[] matchId, KeyValues kv, Get5Team team)
 
     } while (kv.GotoNextKey());
     kv.GoBack();
+  }
+}
+
+static void AddStringHeader(Handle request, const char[] key, const char[] value) {
+  if(!SteamWorks_SetHTTPRequestHeaderValue(request, key, value)) {
+    LogError("Failed to add http header value %s=%s", key, value);
+  } else {
+    LogDebug("Added http header value %s=%s to request", key, value);
   }
 }
 
