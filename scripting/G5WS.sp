@@ -239,14 +239,12 @@ public int DemoCallback(Handle request, bool failure, bool successful, EHTTPStat
   if (failure || !successful) {
     LogError("Demo request failed, status code = %d", status);
   }
-  delete request;
   return;
 }
 
 public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStatusCode status, int data) {
   if (failure || !successful) {
     LogError("Logo request failed, status code = %d", status);
-    delete request;
     return;
   }
 
@@ -266,7 +264,6 @@ public int LogoCallback(Handle request, bool failure, bool successful, EHTTPStat
   SteamWorks_WriteHTTPResponseBodyToFile(request, logoPath);
 
   AddFileToDownloadsTable(logoPath);
-  delete request;
 }
 
 public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
