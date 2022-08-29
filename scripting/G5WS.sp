@@ -491,6 +491,7 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
   
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/vetoUpdate", matchId);
   if (req != INVALID_HANDLE) {
+    LogDebug("Handle is valid and accepted Map Veto.");
     AddStringParam(req, "map", mapName);
     AddStringParam(req, "teamString", teamString);
     AddStringParam(req, "pick_or_veto", "ban");  
@@ -500,7 +501,6 @@ public void Get5_OnMapVetoed(const Get5MapVetoedEvent event){
 }
 
 public void Get5_OnMapPicked(const Get5MapPickedEvent event){
-  LogDebug("Accepted Map Pick.");
   char teamString[64];
   char matchId[64];
   char mapName[64];
@@ -510,6 +510,7 @@ public void Get5_OnMapPicked(const Get5MapPickedEvent event){
   GetTeamString(event.Team, teamString, sizeof(teamString));
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/vetoUpdate", matchId);
   if (req != INVALID_HANDLE) {
+    LogDebug("Handle is valid and accepted Map Pick.");
     AddStringParam(req, "map", mapName);
     AddStringParam(req, "teamString", teamString);
     AddStringParam(req, "pick_or_veto", "pick");
@@ -571,8 +572,9 @@ public void Get5_OnDemoFinished(const Get5DemoFinishedEvent event){
       SteamWorks_SendHTTPRequest(req);
       delete req;
       Handle fileReq = CreateRequestNoKey(
-        k_EHTTPMethodPUT, "match/%s/map/%d/demo/upload/%s", matchId, mapNumber, g_storedAPIKey);
+        k_EHTTPMethodPUT, "match/%s/map/%d/demo/upload", matchId, mapNumber);
       if (fileReq != INVALID_HANDLE) {
+        AddStringHeader(fileReq, "key", g_storedAPIKey);
         LogDebug("Uploading demo to server...");
         SteamWorks_SetHTTPRequestRawPostBodyFromFile(fileReq, "application/octet-stream", filename);
         SteamWorks_SetHTTPCallbacks(fileReq, DemoCallback);
@@ -645,9 +647,10 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
   char matchId[64];
   char backupFile[PLATFORM_MAX_PATH];
   event.GetMatchId(matchId, sizeof(matchId));
-  Handle req = CreateRequestNoKey(k_EHTTPMethodPUT, "match/%s/map/%d/round/%d/backup/%s", 
-    matchId, event.MapNumber, event.RoundNumber, g_APIKey);
+  Handle req = CreateRequestNoKey(k_EHTTPMethodPUT, "match/%s/map/%d/round/%d/backup", 
+    matchId, event.MapNumber, event.RoundNumber);
   if (req != INVALID_HANDLE) {
+    AddStringHeader(req, "key", g_APIKey);
     char backupDirectory[PLATFORM_MAX_PATH];
     GetConVarStringSafe("get5_backup_path", backupDirectory, sizeof(backupDirectory));
     ReplaceString(backupDirectory, sizeof(backupDirectory), "{MATCHID}", matchId);
