@@ -759,3 +759,7 @@ Get5Side GetClientCoachingSide(int client) {
   }
   return Get5Side_None;
 }
+
+bool IsClientCoaching(int client) {
+  return GetClientCoachingSide(client) != Get5Side_None;
+}
