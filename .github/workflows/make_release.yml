@@ -46,16 +46,15 @@ jobs:
 
           untar_files() {
               mv *.tar* tmp/
-              mv *.zip* tmp/
+              mv *.inc* tmp/
               cd tmp
-              tar -zxvf sourcemod*.tar.gz
-              unzip sm-rip*.zip
-              mkdir -p ./addons/sourcemod/scripting/get5
+              tar -zxf sourcemod*.tar.gz
           }
 
           move_api_files() {
+              mkdir -p ./addons/sourcemod/scripting/get5
               cp -r ../scripting/* ./addons/sourcemod/scripting/
-              cp -f ../SteamWorks.inc ./addons/sourcemod/scripting/include/SteamWorks.inc
+              cp -f ./SteamWorks.inc ./addons/sourcemod/scripting/include/SteamWorks.inc
               cp -f ../get5/scripting/include/get5.inc ./addons/sourcemod/scripting/include/get5.inc
               cp -f ../get5/scripting/include/logdebug.inc ./addons/sourcemod/scripting/include/logdebug.inc
               cp -f ../get5/scripting/get5/util.sp ./addons/sourcemod/scripting/get5/util.sp
@@ -72,6 +71,7 @@ jobs:
           remove_tmp() {
               cd ../../../../
               rm -rf ./tmp/
+              git submodule deinit --force --all
           }
           create_zip() {
               zip G5WS G5WS.smx
@@ -85,6 +85,7 @@ jobs:
           compile
           remove_tmp
           create_zip
+          
       - name: Create a Release
         id: create_release
         uses: ncipollo/release-action@v1.8.3
