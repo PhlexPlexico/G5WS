@@ -29,8 +29,8 @@ jobs:
       - name: Build Project
         run: |
           download_files() {
-          wget https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6499-linux.tar.gz
-          wget https://github.com/ErikMinekus/sm-ripext/releases/download/1.3.0/sm-ripext-1.3.0-linux.zip
+            wget https://sm.alliedmods.net/smdrop/1.10/sourcemod-1.10.0-git6499-linux.tar.gz
+            wget https://raw.githubusercontent.com/KyleSanderson/SteamWorks/1.2.3c/Pawn/includes/SteamWorks.inc
           }
 
           init_submodule() {
@@ -55,8 +55,8 @@ jobs:
 
           move_api_files() {
               cp -r ../scripting/* ./addons/sourcemod/scripting/
+              cp -f ../SteamWorks.inc ./addons/sourcemod/scripting/include/SteamWorks.inc
               cp -f ../get5/scripting/include/get5.inc ./addons/sourcemod/scripting/include/get5.inc
-              cp -f ../get5/scripting/include/logdebug.inc ./addons/sourcemod/scripting/include/logdebug.inc
               cp -f ../get5/scripting/include/logdebug.inc ./addons/sourcemod/scripting/include/logdebug.inc
               cp -f ../get5/scripting/get5/util.sp ./addons/sourcemod/scripting/get5/util.sp
               cp -r ../get5/dependencies/sm-json/addons/sourcemod/scripting/include/* ./addons/sourcemod/scripting/include/

@@ -5,6 +5,5 @@ builds
 compile.sh
 .vscode/*
 # Submodule, so let's ignore if we forget to remove.
-scripting/include/get5.inc
-scripting/include/logdebug.inc
+scripting/include/*.inc
 build.sh
