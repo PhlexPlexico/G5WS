@@ -28,7 +28,7 @@
 #include <SteamWorks>
 #include <json>  // github.com/clugg/sm-json
 
-#define PLUGIN_VERSION "4.0.0"
+#define PLUGIN_VERSION "4.0.1"
 
 
 #pragma semicolon 1
@@ -301,9 +301,19 @@ public void Get5_OnGoingLive(const Get5GoingLiveEvent event) {
   char matchId[64];
   event.GetMatchId(matchId, sizeof(matchId));
 
+
+  char versionNumber[64];
+  ConVar versionCvar = FindConVar("get5_version");
+  if (versionCvar != null) {
+    versionCvar.GetString(versionNumber, sizeof(versionNumber));
+  }
+
   Handle req = CreateRequest(k_EHTTPMethodPOST, "match/%s/map/%d/start", matchId, event.MapNumber);
   if (req != INVALID_HANDLE) {
     AddStringParam(req, "mapname", mapName);
+    if (versionCvar != null) {
+      AddStringParam(req, "version_number", versionNumber);
+    }
     SteamWorks_SendHTTPRequest(req);
     delete req;
   }
