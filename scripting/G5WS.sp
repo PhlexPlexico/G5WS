@@ -687,7 +687,7 @@ public void Get5_OnRoundEnd(const Get5RoundEndedEvent event) {
 
   bool halftimeEnabled = (GetCvarIntSafe("mp_halftime") != 0);
 
-  if (halftimeEnabled) {
+  if (g_EnableSupportMessage.BoolValue && halftimeEnabled) {
 
       // Regulation halftime. (after round 15)
       if (event.RoundNumber == roundsPerHalf) {
