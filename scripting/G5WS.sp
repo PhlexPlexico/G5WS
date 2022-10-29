@@ -204,7 +204,7 @@ public void Get5_OnSeriesInit(const Get5SeriesStartedEvent event) {
 }
 
 // New Feat: Socket calls for OnPlayerDeath for live update.
-public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+/*public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
   char matchId[64];
   char attackerSteamId[AUTH_LENGTH];
   char victimSteamId[AUTH_LENGTH];
@@ -226,7 +226,7 @@ public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
     SteamWorks_SendHTTPRequest(req);
     delete req;
   }
-}
+}*/
 
 public void CheckForLogo(const char[] logo) {
   if (StrEqual(logo, "")) {
