@@ -28,7 +28,7 @@
 #include <SteamWorks>
 #include <json>  // github.com/clugg/sm-json
 
-#define PLUGIN_VERSION "4.0.1"
+#define PLUGIN_VERSION "4.0.2"
 
 
 #pragma semicolon 1
@@ -664,8 +664,8 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     char backupDirectory[PLATFORM_MAX_PATH];
     GetConVarStringSafe("get5_backup_path", backupDirectory, sizeof(backupDirectory));
     ReplaceString(backupDirectory, sizeof(backupDirectory), "{MATCHID}", matchId);
-    Format(backupFile, sizeof(backupFile), "%sget5_backup_match%s_map%d_round%d.cfg", backupDirectory,
-           matchId, event.MapNumber, event.RoundNumber);
+    Format(backupFile, sizeof(backupFile), "%sget5_backup%d_match%s_map%d_round%d.cfg", backupDirectory,
+           Get5_GetServerID(), matchId, event.MapNumber, event.RoundNumber);
     SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", backupFile);
     SteamWorks_SendHTTPRequest(req);
     delete req;
