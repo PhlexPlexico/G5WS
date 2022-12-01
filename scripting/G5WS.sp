@@ -205,6 +205,7 @@ public void Get5_OnSeriesInit(const Get5SeriesStartedEvent event) {
 
 // New Feat: Socket calls for OnPlayerDeath for live update.
 /*public void Get5_OnPlayerDeath(const Get5PlayerDeathEvent event) {
+  static char decodedOutput[16384];
   char matchId[64];
   char attackerSteamId[AUTH_LENGTH];
   char victimSteamId[AUTH_LENGTH];
@@ -220,9 +221,9 @@ public void Get5_OnSeriesInit(const Get5SeriesStartedEvent event) {
   Handle req = CreateRequest(k_EHTTPMethodPUT, "match/%s/map/%d/player/%s/extras/update", matchId,
                                  mapNumber, attackerSteamId);
   if (req != null && (clientNum > 0 && !IsClientCoaching(clientNum))) {
-    char decodedOutput[8096];
-    event.Encode(decodedOutput, sizeof(decodedOutput));
-    AddStringParam(req, "PlayerDeathValues", decodedOutput);
+    event.Encode(decodedOutput, 16384);
+    SteamWorks_SetHTTPRequestRawPostBody(req, "application/json", decodedOutput, strlen(decodedOutput));
+    SteamWorks_SetHTTPRequestNetworkActivityTimeout(req, 15);
     SteamWorks_SendHTTPRequest(req);
     delete req;
   }
