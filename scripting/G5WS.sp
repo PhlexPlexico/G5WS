@@ -656,6 +656,7 @@ public Action Command_LoadBackupUrl(int client, int args) {
 
 public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
   char matchId[64];
+  char serverId[65];
   char backupFile[PLATFORM_MAX_PATH];
   event.GetMatchId(matchId, sizeof(matchId));
   Handle req = CreateRequestNoKey(k_EHTTPMethodPUT, "match/%s/map/%d/round/%d/backup", 
@@ -664,9 +665,10 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     AddStringHeader(req, "key", g_APIKey);
     char backupDirectory[PLATFORM_MAX_PATH];
     GetConVarStringSafe("get5_backup_path", backupDirectory, sizeof(backupDirectory));
+    Get5_GetServerID(serverId, sizeof(serverId));
     ReplaceString(backupDirectory, sizeof(backupDirectory), "{MATCHID}", matchId);
     Format(backupFile, sizeof(backupFile), "%sget5_backup%d_match%s_map%d_round%d.cfg", backupDirectory,
-           Get5_GetServerID(), matchId, event.MapNumber, event.RoundNumber);
+           serverId, matchId, event.MapNumber, event.RoundNumber);
     SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", backupFile);
     SteamWorks_SendHTTPRequest(req);
     delete req;
