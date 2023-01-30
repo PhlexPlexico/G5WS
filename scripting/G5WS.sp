@@ -667,7 +667,7 @@ public void Get5_OnRoundStart(const Get5RoundStartedEvent event) {
     GetConVarStringSafe("get5_backup_path", backupDirectory, sizeof(backupDirectory));
     Get5_GetServerID(serverId, sizeof(serverId));
     ReplaceString(backupDirectory, sizeof(backupDirectory), "{MATCHID}", matchId);
-    Format(backupFile, sizeof(backupFile), "%sget5_backup%d_match%s_map%d_round%d.cfg", backupDirectory,
+    Format(backupFile, sizeof(backupFile), "%sget5_backup%s_match%s_map%d_round%d.cfg", backupDirectory,
            serverId, matchId, event.MapNumber, event.RoundNumber);
     SteamWorks_SetHTTPRequestRawPostBodyFromFile(req, "application/octet-stream", backupFile);
     SteamWorks_SendHTTPRequest(req);
