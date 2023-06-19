@@ -1,4 +1,8 @@
 # Get5 Web Stats (G5WS)
+**Status: Not Supported/Deprecated**  
+While this plugin still has support for get5 versions under 0.13, it is highly recommended you update your game servers and use version >= 2.0.0.0 of G5API. Get5 now includes everything that this plugin had, and more.
+
+
 Sourcemod plugin for G5API.
 
 This plugin is to be used in conjuction with [G5API](https://github.com/PhlexPlexico/G5API). It includes various changes, such as tracking vetoes to a database, and uploading the demo of a match once the match is completed.
